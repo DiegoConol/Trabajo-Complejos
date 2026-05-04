@@ -91,6 +91,16 @@ void inicializar(int matriz[N][M])
 
 
 
+//Función de probabilidad. Llamaré 1 arriba, 2 derecha, 3 abajo, 4 izquierda. La partícula querrá moverse para esa dirección.
+
+double probabilidad(double numero)
+{
+    int resultado=1; //Pongo 1 pero ahora lo sustituyo
+    numero=2.0;
+    return resultado;
+}
+
+
 //Creo el programa entero
 
 int main(void)
