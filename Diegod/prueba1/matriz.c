@@ -28,18 +28,26 @@
 
 
 
-#define N 9         //Numero de filas.
-#define M 9         //Numero de columnas.
-#define div_N 3     //Dimension de la sección en fila.
-#define div_M 3     //Dimension de la sección en columna.
+#define N 9                 //Numero de filas.
+#define M 9                 //Numero de columnas.
+#define div_N 3             //Dimension de la sección en fila.
+#define div_M 3             //Dimension de la sección en columna.
 
-#define part_hot 10 //Número de partículas calientes.
-#define part_cold 10//Número de partículas frías.
-#define T_TOTAL     //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse. 
+#define part_hot 10         //Número de partículas calientes.
+#define part_cold 10        //Número de partículas frías.
+#define T_TOTAL 100         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+
+#define umbral_cold 0.9     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_hot 0.3      //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 
 
-int matriz[N][M];
+int matriz[N][M];           //Matriz principal. Es nuestra cuadrícula.
+int matriz_auxiliar[N][M];  //Matriz en la que se harán cambios. Esto es para no modificar y trabajar en la misma matriz.
+int semueve=0;              //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda.
+int puedemoverse=0;         //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres?
+int haydireccion=-1;        //Variable que indica si la dirección propuesta es válida. ¿Justo a la celda que me quiero mover está libre?
+double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse. 
 
 
 //Función de inicializar la matriz.
@@ -91,16 +99,6 @@ void inicializar(int matriz[N][M])
 
 
 
-//Función de probabilidad. Llamaré 1 arriba, 2 derecha, 3 abajo, 4 izquierda. La partícula querrá moverse para esa dirección.
-
-double probabilidad(double numero)
-{
-    int resultado=1; //Pongo 1 pero ahora lo sustituyo
-    numero=2.0;
-    return resultado;
-}
-
-
 //Creo el programa entero
 
 int main(void)
@@ -123,7 +121,6 @@ int main(void)
     //Inicializo la matriz llamando a la función
     inicializar(matriz);
 
-
     //Guardo esta iteración
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
@@ -137,6 +134,175 @@ int main(void)
     }
 
     fprintf(matriz_file, "\n");
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    //Array de movimiento. La primera posicion es arriba, la segunda derecha, tercera abajo y cuarta izquierda. 0 indica libre, 1 indica ocupado.
+    int movimiento[4];
+
+    //HAGO EL BUCLE GRANDE. NO PARARÁ HASTA QUE TERMINE T_TOTAL
+    int contador=0;
+    while(contador<T_TOTAL)
+    {   
+        //Inicializo la matriz auxiliar a la matriz. La matriz auxiliar la usaré para poner los cambios de matriz principal. Luego la igualaré y el bucle estará completo.
+        for (int i=0; i<N; i++)
+        {
+            for (int j=0; j<M; j++)
+            {
+                matriz_auxiliar[i][j]=matriz[i][j];
+            }
+        }
+
+
+        for (int i=0; i<N; i++)
+        {
+            for (int j=0; j<M; j++)
+            {   
+                
+                if(matriz[i][j]>0)
+                {
+                    //COMPRUEBO QUE NO HAYA PARTÍCULA EN ESA POSICIÓN.
+                    //Si hay un 0, puede moverse en esa dirección. Sino no, tiene que escoger otra. Lo que voy a hacer es que vaya ciclando.
+                    //Es decir, si no puede ir arriba, que vaya a la derecha, sino abajo y sino a la izquierda.
+                    //La variable auxiliar_contador_semueve ayuda a que no entre en bucle. Si llega a 4 es que no hay movimiento posible --> que pase a la siguiente partícula.
+
+
+                    //Veo primero a DONDE se puede mover. Asumo primero que todo está bloqueado. De esta forma me quito los bordes de la matriz como muros infranqueables.
+
+                    movimiento[0] = 1;
+                    movimiento[1] = 1;
+                    movimiento[2] = 1;
+                    movimiento[3] = 1;
+
+                    //También pongo la variable 'puedemoverse'. Si hay almenos una casilla que sea 0, pongo su valor en 1. Si no puede moverse, pasamos a la siguiente partícula.
+                    puedemoverse=0;
+                    //La condicion de los bordes es que sea mayor y menor respectivamente. Como en la posición 0 no puede irse a la -1, solo puede ir a la 0 la que esté en 1. Mismo razonamiento para todos.
+
+                    if (i > 0 && matriz_auxiliar[i-1][j] == 0) {
+                        movimiento[0] = 0;
+                        puedemoverse=1;
+                    }
+
+                    if (j < M-1 && matriz_auxiliar[i][j+1] == 0) {
+                        movimiento[1] = 0;
+                        puedemoverse=1;
+                    }
+
+                    if (i < N-1 && matriz_auxiliar[i+1][j] == 0) {
+                        movimiento[2] = 0;
+                        puedemoverse=1;
+                    }
+
+                    if (j > 0 && matriz_auxiliar[i][j-1] == 0) {
+                        movimiento[3] = 0;
+                        puedemoverse=1;
+                    }
+
+                    //Otro if grande. Si es que puede moverse:
+                    
+                    if(puedemoverse==1)
+                    {
+                        haydireccion=-1;
+                        //Escojo una dirección aleatoria. 0 es arriba, 1 derecha, 2 abajo, 3 izquierda.
+
+                        semueve=rand()%4; //Se escoge la dirección de movimiento al azar.
+
+                        if (semueve==0 && movimiento[0]==0){haydireccion=0;}
+                        if (semueve==1 && movimiento[1]==0){haydireccion=1;}
+                        if (semueve==2 && movimiento[2]==0){haydireccion=2;}
+                        if (semueve==3 && movimiento[3]==0){haydireccion=3;}
+
+                        if(haydireccion!=-1)
+                        {
+                            //Ahora escojo una probabilidad de que se mueva.
+                            prob_movimiento = (double)rand()/ (double) RAND_MAX; //Esto da una probabilidad uniforme. El double le hace casting.
+                            //Para el caso de que sea fría
+                            if (matriz[i][j]==1)
+                            {
+                                if(prob_movimiento >= umbral_cold)
+                                {
+                                    matriz_auxiliar[i][j]=0;
+                                    if(haydireccion==0)
+                                    {
+                                        matriz_auxiliar[i-1][j]=1;
+                                    }
+                                    else if(haydireccion==1)
+                                    {
+                                        matriz_auxiliar[i][j+1]=1;
+                                    }
+                                    else if(haydireccion==2)
+                                    {
+                                        matriz_auxiliar[i+1][j]=1;
+                                    }
+                                    else
+                                    {
+                                        matriz_auxiliar[i][j-1]=1;
+                                    }
+                                }
+                                //Termina el if de fría
+                            }
+                            //Para el caso de que sea caliente
+                            else
+                            {
+                                if(prob_movimiento >= umbral_hot)
+                                {
+                                    matriz_auxiliar[i][j]=0;
+                                    if(haydireccion==0)
+                                    {
+                                        matriz_auxiliar[i-1][j]=2;
+                                    }
+                                    else if(haydireccion==1)
+                                    {
+                                        matriz_auxiliar[i][j+1]=2;
+                                    }
+                                    else if(haydireccion==2)
+                                    {
+                                        matriz_auxiliar[i+1][j]=2;
+                                    }
+                                    else
+                                    {
+                                        matriz_auxiliar[i][j-1]=2;
+                                    }
+                                }
+                                //Termina if de caliente
+                            }
+                            //Termina la elección de dirección.
+                        }
+
+                        //Termina el poder moverse.
+                    }
+                    //Termina el elemento de matriz no nulo.
+                }
+                //Termina la columna
+            }
+            //Termina la fila
+        }
+        
+    
+
+        //Pongo de nuevo los valores de matrizauxiliar en la matriz normal y los guardo en el fichero.
+
+        for(int i=0; i<N; i++)
+        {
+            for(int j=0; j<M; j++)
+            {
+                matriz[i][j]=matriz_auxiliar[i][j];
+                fprintf(matriz_file, "%d", matriz[i][j]);
+
+                if (j < M - 1) {
+                    fprintf(matriz_file, "\t");
+                }
+            }
+            fprintf(matriz_file, "\n");
+        }
+        fprintf(matriz_file, "\n");
+
+        contador++;
+        //Termina el bucle total de movimiento.
+    }
+
 
 
     
