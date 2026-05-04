@@ -28,13 +28,109 @@
 
 
 
-#define N 9         //Numero de filas
-#define M 9         //Numero de columnas
-#define div_N 3     //Dimension de la sección en fila
-#define div_M 3     //Dimension de la sección en columna
+#define N 9         //Numero de filas.
+#define M 9         //Numero de columnas.
+#define div_N 3     //Dimension de la sección en fila.
+#define div_M 3     //Dimension de la sección en columna.
 
+#define part_hot 10 //Número de partículas calientes.
+#define part_cold 10//Número de partículas frías.
 #define T_TOTAL     //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse. 
 
 
 
-double r[N][M];
+int matriz[N][M];
+
+
+//Función de inicializar la matriz.
+
+void inicializar(int matriz[N][M])
+{
+    
+    //Las inicializo a 0
+    for (int i=0; i<N; i++)
+    {
+        for(int j=0; j<M; j++)
+        {
+            matriz[i][j]=0;
+        }
+    }
+
+    //Pongo las frías:
+    int contador=0;
+
+    while (contador<part_cold)
+    {
+        int aux_fila = rand()%N;
+        int aux_col = rand()%M;
+
+        if (matriz[aux_fila][aux_col]==0)
+        {
+            matriz[aux_fila][aux_col]=1;
+            contador++;
+        }
+    }
+
+    //Pongo las calientes:
+    contador=0;
+
+    while (contador<part_hot)
+    {
+        int aux_fila = rand()%N;
+        int aux_col = rand()%M;
+
+        if (matriz[aux_fila][aux_col]==0)
+        {
+            matriz[aux_fila][aux_col]=2;
+            contador++;
+        }
+    }
+
+    return;
+}
+
+
+
+//Creo el programa entero
+
+int main(void)
+{
+
+    FILE *matriz_file = fopen("MATRIZ.txt", "w");    //Fichero donde se guarda la matriz y sus pasos
+
+    if (matriz_file == NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    //Voy a crear la matriz de todo 0. 
+    //A continuación, rellenaré las partículas frías y calientes. ¿Cómo?
+    //Escojo una posición al azar, si hay un 0, pues que ponga una partícula, sino, que lo intente otra vez.
+
+    //Para los números aleatorios, pongo la semilla en null
+    srand(time(NULL));
+
+    //Inicializo la matriz llamando a la función
+    inicializar(matriz);
+
+
+    //Guardo esta iteración
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < M; j++) {
+            fprintf(matriz_file, "%d", matriz[i][j]);
+
+            if (j < M - 1) {
+                fprintf(matriz_file, "\t");
+            }
+        }
+        fprintf(matriz_file, "\n");
+    }
+
+    fprintf(matriz_file, "\n");
+
+
+    
+    fclose(matriz_file);
+    printf("Lo he hecho todo bien");
+    return 0;    
+}
