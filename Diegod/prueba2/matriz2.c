@@ -1,5 +1,9 @@
-// CÓDIGO PARA CREAR UNA MATRIZ NXM
-// ESTE CÓDIGO NO HACE ACTUAR AL DEMONIO
+// AHORA ACTÚA EL DEMONIO.
+//
+//El demonio va a poner las partículas frías a la izquierda arriba, y las partículas calientes abajo derecha.
+//El demonio va a CERRAR el paso a una partícula fría si intenta pasar para la derecha o abajo en alguna de las divisiones, pero la dejará pasar si quiere ir a la izquierda o arriba.
+//Lo mismo pero al revés para las partículas calientes.
+
 
 #include <stdio.h>
 #include <string.h>
@@ -31,7 +35,7 @@
 
 #define N 10                 //Numero de filas.
 #define M 15                 //Numero de columnas.
-#define div_N 3             //Dimension de la sección en fila.
+#define div_N 2             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
 #define div_M 3             //Dimension de la sección en columna.
 
 #define part_hot 20         //Número de partículas calientes.
@@ -105,7 +109,8 @@ void inicializar(int matriz[N][M])
 int main(void)
 {
 
-    FILE *matriz_file = fopen("MATRIZ.txt", "w");    //Fichero donde se guarda la matriz y sus pasos
+    FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos
+    FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se guarda el paso, la cantidad de veces que ha actuado el demonio.     
 
     if (matriz_file == NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
@@ -229,7 +234,7 @@ int main(void)
                                     {
                                         matriz_auxiliar[i-1][j]=1;
                                     }
-                                    else if(haydireccion==1)
+                                    else if(haydireccion==1 && j/div_M!=0)
                                     {
                                         matriz_auxiliar[i][j+1]=1;
                                     }
