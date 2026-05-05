@@ -39,8 +39,8 @@
 #define div_N 2             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
 #define div_M 2             //Dimension de la sección en columna.
 
-#define part_hot 50         //Número de partículas calientes.
-#define part_cold 50        //Número de partículas frías.
+#define part_hot 100         //Número de partículas calientes.
+#define part_cold 100        //Número de partículas frías.
 #define T_TOTAL 500         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
 #define umbral_cold 0.2     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
@@ -243,7 +243,7 @@ int main(void)
                                     }
                                     else if (haydireccion == 1)
                                     {
-                                        if (((j+1)/divisor_columna != 0) && (j+1) != M)
+                                        if (((j+1)%divisor_columna == 0) && (j+1) != M)
                                         {
                                             matriz_auxiliar[i][j] = 0;
                                             matriz_auxiliar[i][j+1] = 1;
@@ -257,7 +257,7 @@ int main(void)
                                     }
                                     else if (haydireccion == 2)
                                     {
-                                        if (((i+1)/divisor_fila != 0) && (i+1) != N)
+                                        if (((i+1)%divisor_fila == 0) && (i+1) != N)
                                         {
                                             matriz_auxiliar[i][j] = 0;
                                             matriz_auxiliar[i+1][j] = 1;
@@ -284,7 +284,7 @@ int main(void)
                                 {
                                     if(haydireccion==0)
                                     {
-                                        if (((i)/divisor_columna != 0) && (i) != 0)
+                                        if (((i)%divisor_columna == 0) && (i) != 0)
                                         {
                                             matriz_auxiliar[i][j] = 0;
                                             matriz_auxiliar[i-1][j] = 2;
@@ -308,7 +308,7 @@ int main(void)
                                     }
                                     else if(haydireccion==3)
                                     {
-                                        if (((j)/divisor_columna != 0) && (j) != 0)
+                                        if (((j)%divisor_columna == 0) && (j) != 0)
                                         {
                                             matriz_auxiliar[i][j] = 0;
                                             matriz_auxiliar[i][j-1] = 2;
