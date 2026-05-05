@@ -36,14 +36,14 @@
 
 #define N 20                 //Numero de filas.
 #define M 20                 //Numero de columnas.
-#define div_N 2             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
-#define div_M 2             //Dimension de la sección en columna.
+#define div_N 4             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
+#define div_M 4             //Dimension de la sección en columna.
 
 #define part_hot 100         //Número de partículas calientes.
 #define part_cold 100        //Número de partículas frías.
-#define T_TOTAL 500         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define T_TOTAL 1000         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
-#define umbral_cold 0.2     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_cold 0.5     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1      //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 
@@ -245,28 +245,28 @@ int main(void)
                                     {
                                         if (((j+1)%divisor_columna == 0) && (j+1) != M)
                                         {
-                                            matriz_auxiliar[i][j] = 0;
-                                            matriz_auxiliar[i][j+1] = 1;
+                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
                                             actua_demonio++;
                                             valor_demonio = 1;
                                         }
                                         else
                                         {
-                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i][j+1] = 1;
                                         }
                                     }
                                     else if (haydireccion == 2)
                                     {
                                         if (((i+1)%divisor_fila == 0) && (i+1) != N)
                                         {
-                                            matriz_auxiliar[i][j] = 0;
-                                            matriz_auxiliar[i+1][j] = 1;
+                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
                                             actua_demonio++;
                                             valor_demonio = 1;
                                         }
                                         else
                                         {
-                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i+1][j] = 1;
                                         }
                                     }
                                     else if (haydireccion == 3)
@@ -284,16 +284,16 @@ int main(void)
                                 {
                                     if(haydireccion==0)
                                     {
-                                        if (((i)%divisor_columna == 0) && (i) != 0)
+                                        if (((i)%divisor_fila == 0) && (i) != 0)
                                         {
-                                            matriz_auxiliar[i][j] = 0;
-                                            matriz_auxiliar[i-1][j] = 2;
+                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
                                             actua_demonio++;
                                             valor_demonio = 2;
                                         }
                                         else
                                         {
-                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i-1][j] = 2;
                                         }
                                     }
                                     else if(haydireccion==1)
@@ -310,14 +310,14 @@ int main(void)
                                     {
                                         if (((j)%divisor_columna == 0) && (j) != 0)
                                         {
-                                            matriz_auxiliar[i][j] = 0;
-                                            matriz_auxiliar[i][j-1] = 2;
+                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
                                             actua_demonio++;
                                             valor_demonio = 2;
                                         }
                                         else
                                         {
-                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i][j-1] = 2;
                                         }
                                     }
                                 }
