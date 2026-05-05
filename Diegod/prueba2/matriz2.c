@@ -3,6 +3,7 @@
 //El demonio va a poner las partículas frías a la izquierda arriba, y las partículas calientes abajo derecha.
 //El demonio va a CERRAR el paso a una partícula fría si intenta pasar para la derecha o abajo en alguna de las divisiones, pero la dejará pasar si quiere ir a la izquierda o arriba.
 //Lo mismo pero al revés para las partículas calientes.
+//Anotará un 1 si niega el paso a una fría y un 2 a una caliente.
 
 
 #include <stdio.h>
@@ -33,17 +34,17 @@
 
 
 
-#define N 10                 //Numero de filas.
-#define M 15                 //Numero de columnas.
+#define N 20                 //Numero de filas.
+#define M 20                 //Numero de columnas.
 #define div_N 2             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
-#define div_M 3             //Dimension de la sección en columna.
+#define div_M 2             //Dimension de la sección en columna.
 
-#define part_hot 20         //Número de partículas calientes.
-#define part_cold 20        //Número de partículas frías.
-#define T_TOTAL 100         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define part_hot 50         //Número de partículas calientes.
+#define part_cold 50        //Número de partículas frías.
+#define T_TOTAL 500         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
-#define umbral_cold 0.9     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
-#define umbral_hot 0.3      //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
+#define umbral_cold 0.2     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_hot 0.1      //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 
 
@@ -52,8 +53,11 @@ int matriz_auxiliar[N][M];  //Matriz en la que se harán cambios. Esto es para n
 int semueve=0;              //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda.
 int puedemoverse=0;         //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres?
 int haydireccion=-1;        //Variable que indica si la dirección propuesta es válida. ¿Justo a la celda que me quiero mover está libre?
-double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse. 
-
+double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse.
+int divisor_columna = M/div_M;
+int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de 5, en esa columna hay una división.
+int actua_demonio = 0;      //Veces que actúa el demonio
+int valor_demonio = 0;      //¿Ha actuado en esa iteración el demonio?
 
 //Función de inicializar la matriz.
 
@@ -112,7 +116,7 @@ int main(void)
     FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos
     FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se guarda el paso, la cantidad de veces que ha actuado el demonio.     
 
-    if (matriz_file == NULL) {
+    if (matriz_file == NULL || demonio_file==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -141,6 +145,7 @@ int main(void)
 
     fprintf(matriz_file, "\n");
 
+    
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -166,6 +171,8 @@ int main(void)
         {
             for (int j=0; j<M; j++)
             {   
+
+                valor_demonio=0;
                 
                 if(matriz[i][j]>0)
                 {
@@ -227,24 +234,45 @@ int main(void)
                             //Para el caso de que sea fría
                             if (matriz[i][j]==1)
                             {
-                                if(prob_movimiento >= umbral_cold)
+                                if (prob_movimiento >= umbral_cold)
                                 {
-                                    matriz_auxiliar[i][j]=0;
-                                    if(haydireccion==0)
+                                    if (haydireccion == 0)
                                     {
-                                        matriz_auxiliar[i-1][j]=1;
+                                        matriz_auxiliar[i][j] = 0;
+                                        matriz_auxiliar[i-1][j] = 1;
                                     }
-                                    else if(haydireccion==1 && j/div_M!=0)
+                                    else if (haydireccion == 1)
                                     {
-                                        matriz_auxiliar[i][j+1]=1;
+                                        if (((j+1)/divisor_columna != 0) && (j+1) != M)
+                                        {
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i][j+1] = 1;
+                                            actua_demonio++;
+                                            valor_demonio = 1;
+                                        }
+                                        else
+                                        {
+                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
+                                        }
                                     }
-                                    else if(haydireccion==2)
+                                    else if (haydireccion == 2)
                                     {
-                                        matriz_auxiliar[i+1][j]=1;
+                                        if (((i+1)/divisor_fila != 0) && (i+1) != N)
+                                        {
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i+1][j] = 1;
+                                            actua_demonio++;
+                                            valor_demonio = 1;
+                                        }
+                                        else
+                                        {
+                                            matriz_auxiliar[i][j] = 1;   // se queda donde estaba
+                                        }
                                     }
-                                    else
+                                    else if (haydireccion == 3)
                                     {
-                                        matriz_auxiliar[i][j-1]=1;
+                                        matriz_auxiliar[i][j] = 0;
+                                        matriz_auxiliar[i][j-1] = 1;
                                     }
                                 }
                                 //Termina el if de fría
@@ -252,24 +280,45 @@ int main(void)
                             //Para el caso de que sea caliente
                             else
                             {
-                                if(prob_movimiento >= umbral_hot)
+                                if (prob_movimiento >= umbral_hot)
                                 {
-                                    matriz_auxiliar[i][j]=0;
                                     if(haydireccion==0)
                                     {
-                                        matriz_auxiliar[i-1][j]=2;
+                                        if (((i)/divisor_columna != 0) && (i) != 0)
+                                        {
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i-1][j] = 2;
+                                            actua_demonio++;
+                                            valor_demonio = 2;
+                                        }
+                                        else
+                                        {
+                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
+                                        }
                                     }
                                     else if(haydireccion==1)
                                     {
-                                        matriz_auxiliar[i][j+1]=2;
+                                        matriz_auxiliar[i][j] = 0;
+                                        matriz_auxiliar[i][j+1] = 2;
                                     }
                                     else if(haydireccion==2)
                                     {
+                                        matriz_auxiliar[i][j]=0;
                                         matriz_auxiliar[i+1][j]=2;
                                     }
-                                    else
+                                    else if(haydireccion==3)
                                     {
-                                        matriz_auxiliar[i][j-1]=2;
+                                        if (((j)/divisor_columna != 0) && (j) != 0)
+                                        {
+                                            matriz_auxiliar[i][j] = 0;
+                                            matriz_auxiliar[i][j-1] = 2;
+                                            actua_demonio++;
+                                            valor_demonio = 2;
+                                        }
+                                        else
+                                        {
+                                            matriz_auxiliar[i][j] = 2;   // se queda donde estaba
+                                        }
                                     }
                                 }
                                 //Termina if de caliente
@@ -279,12 +328,19 @@ int main(void)
 
                         //Termina el poder moverse.
                     }
+                    
                     //Termina el elemento de matriz no nulo.
                 }
+                
+                fprintf(demonio_file, "%d", valor_demonio); //Si no hay partícula, el demonio no actúa..
+                fprintf(demonio_file, "\n");
                 //Termina la columna
             }
             //Termina la fila
         }
+
+        //Cada vez que hagamos una matriz entera, pongo un salto de línea al demonio.
+        fprintf(demonio_file, "\n");
         
     
 
@@ -313,6 +369,7 @@ int main(void)
 
     
     fclose(matriz_file);
+    fclose(demonio_file);
     printf("Lo he hecho todo bien :)");
     return 0;    
 }
