@@ -1,8 +1,4 @@
-// AHORA ACTÚA EL DEMONIO AL REVÉS, COMO DICE EL PROFE.
-//
-//Hay una puerta permanente que no deja pasar a las partículas.
-//Cuando deja pasar a una partícula entonces aumenta la entropía.
-
+//AHORA VEMOS QUE EL DEMONIO VERDADERAMENTE ACTÚA, VAMOS A CALCULAR LA ENTROPÍA, TEMPERATURA Y DEMÁS.
 
 #include <stdio.h>
 #include <string.h>
@@ -53,10 +49,22 @@ int puedemoverse=0;         //Variable que indica la posibilidad de movimiento. 
 int haydireccion=-1;        //Variable que indica si la dirección propuesta es válida. ¿Justo a la celda que me quiero mover está libre?
 double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse.
 int divisor_columna = M/div_M;
-int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de 5, en esa columna hay una división.
+int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de M, en esa columna (a su derecha) hay una división.
 int actua_demonio_cold = 0;     //Veces que actúa el demonio en partículas frías
 int actua_demonio_hot = 0;      //Veces que actúa el demonio en partículas calientes      
 int valor_demonio = 0;          //¿Ha actuado en esa iteración el demonio?
+
+
+//Identificación del sub-bloque de matriz en el que está una partícula.
+int bloquefila = 0;         //identifica en qué fila de bloques está
+int bloquecolumna=0;        //Identifica en qué columna de bloques está.
+
+//Arrays para la densidad: cuenta cuántas partículas hay en cada subsección y las guarda.
+int densidad_cold[div_N][div_M];
+int densidad_hot[div_N][div_M];
+int densidad_total[div_N][div_M]; //Por si acaso.
+
+
 
 //Función de inicializar la matriz.
 
@@ -112,10 +120,23 @@ void inicializar(int matriz[N][M])
 int main(void)
 {
 
-    FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos
-    FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se guarda el paso, la cantidad de veces que ha actuado el demonio.     
 
-    if (matriz_file == NULL || demonio_file==NULL) {
+
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////         INICIALIZAR         /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+    FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos. El paso se diferencia por salto de línea vacío.
+    FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se se guarda la partícula sobre la que ha actuado el demonio. 0=no ha actuado, 1=sobre fría, 2=sobre caliente. El paso se diferencia por salto de línea vacío.
+    FILE *densidad_file = fopen("densidad.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+
+    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -144,21 +165,39 @@ int main(void)
 
     fprintf(matriz_file, "\n");
 
+
+
+
+
+
     //Pongo las variables del demonio a 0.
+
 
     actua_demonio_cold=0;
     actua_demonio_hot=0;
-
-    
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
     //Array de movimiento. La primera posicion es arriba, la segunda derecha, tercera abajo y cuarta izquierda. 0 indica libre, 1 indica ocupado.
     int movimiento[4];
 
     //HAGO EL BUCLE GRANDE. NO PARARÁ HASTA QUE TERMINE T_TOTAL
     int contador=0;
+
+
+
+
+
+
+
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////          BUCLE GENERAL           //////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+    
     while(contador<T_TOTAL)
     {   
         //Inicializo la matriz auxiliar a la matriz. La matriz auxiliar la usaré para poner los cambios de matriz principal. Luego la igualaré y el bucle estará completo.
@@ -385,6 +424,7 @@ int main(void)
             //Termina la fila
         }
 
+
         //Cada vez que hagamos una matriz entera, pongo un salto de línea al demonio.
         fprintf(demonio_file, "\n");
         
@@ -407,15 +447,111 @@ int main(void)
         }
         fprintf(matriz_file, "\n");
 
+
+
+
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////           DENSIDAD            ///////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+        //Ahora vamos a calcular la densidad de cada bloque.
+        //Para modelar la densidad de cada división trabajaremos con las celdas de cada submatriz. No trabajaremos con submatrices, sino con la grande.
+        //Vamos a crear el parámetro "bloquefila" y "bloquecolumna", para que nos diga exactamente en qué región está.
+        //Barreremos todas las submatrices e iremos anotando la cantidad de partículas que hay y si son calientes o frías. 
+        //No tendremos en cuenta si la partícula caliente aporta mayor o menor densidad al ser una propiedad microscópica y no tener potencial de repulsión ni energía cinética.
+        //La temperatura de las partículas se tendrá en cuenta para la temperatura (obvio) y para la presión, un rebote de una caliente trae más presión que un rebote de una fría.
+
+        
+        //Inicializo los arrays de densidad a 0
+
+        for(int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                densidad_cold[i][j]=0;
+                densidad_hot[i][j]=0;
+                densidad_total[i][j]=0;
+            }
+        }
+
+
+        //Barro cada posición de matriz y anoto si está o no para su densidad.
+
+        for(int i=0; i<N; i++)
+        {
+            for(int j=0; j<M; j++)
+            {
+                //Miro que haya partícula
+                if(matriz[i][j]!=0)
+                {   
+                    //Hago la división entera para que me dé la sección correcta
+                    bloquefila=i/divisor_fila;
+                    bloquecolumna=j/divisor_columna;
+
+                    //Identifico si es fría
+                    if(matriz[i][j]==1)
+                    {
+                        densidad_cold[bloquefila][bloquecolumna]++;
+                        densidad_total[bloquefila][bloquecolumna]++;
+                    //Termina el if de fría
+                    }
+                    //Identifico si es caliente
+                    else
+                    {
+                        densidad_hot[bloquefila][bloquecolumna]++;
+                        densidad_total[bloquefila][bloquecolumna]++;
+                    //Termina el if de caliente
+                    }
+
+                //Termina el if de elemento matriz no nulo
+                }
+
+            //Termino de barrir la columna
+            }
+        
+        //Termino de barrir la fila
+        }
+
+        //Guardo esta matriz en el archivo. Los arrays de frío y caliente no los guardo por ahora. PODRÍA HACERLO PERO POR LA SUPOSICIÓN ANTERIOR, SOLO ESTÁN AHÍ POR SI ACASO.
+
+        for(int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                fprintf(densidad_file, "%d", densidad_total[i][j]);
+                if(j<div_M-1)
+                {
+                    fprintf(densidad_file, "\t");
+                }
+            }
+            fprintf(densidad_file, "\n");
+        }
+       fprintf(densidad_file, "\n");
+
+
+
+
         contador++;
         //Termina el bucle total de movimiento.
     }
 
 
 
+
+
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                     PARTE DEL DEMONIO                     /////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 
     //Vamos con el demonio como actúa de verdad.
@@ -431,6 +567,7 @@ int main(void)
     
     fclose(matriz_file);
     fclose(demonio_file);
+    fclose(densidad_file);
     printf("Lo he hecho todo bien :)");
     return 0;    
 }
