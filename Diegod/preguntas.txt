@@ -1,0 +1,14 @@
+PREGUNTAS PARA DANIEL MANZANO TUTORÍA 13-5-26
+
+
+1.- Para modelar la densidad, ¿tengo que tener en cuenta que las partículas calientes "aportan menos", o con asumir que es una propiedad macroscópica y su espacio es finito, las tratamos todas iguales?
+
+2.- Para modelar la temperatura, se nos ha ocurrido poner que sea una constante por 1-p con p la probabilidad de moverse del tipo de partícula.
+Las frías tienen una p mayor que las calientes, por lo que aportan mucho menos. ¿Está bien modelado?
+
+3.- Para la presión ahora sí uso la densidad de frías y calientes. Ahora bien, si le he aplicado un factor 'A' a la temperatura, ¿qué factor debo aplicarle a la presión? 
+
+4.- Estamos un poco perdidos para tema demonio. ¿Memoria finita? Eso significa que mientras está durando la simulación se va llenando, se vacía, se va llenando, se vacía y así?
+De ser así, ¿Debe terminar siempre con memoria vacía, verdad?
+Cuando se vacía, como yo quiero modelar la temperatura no se tiene en cuenta la memoria, ¿debería?
+Es que no le vemos el sentido a que si tiene memoria M, no venga esa dependencia en el calor que suelta.
