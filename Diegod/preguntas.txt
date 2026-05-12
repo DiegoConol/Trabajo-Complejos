@@ -12,3 +12,8 @@ Las frías tienen una p mayor que las calientes, por lo que aportan mucho menos.
 De ser así, ¿Debe terminar siempre con memoria vacía, verdad?
 Cuando se vacía, como yo quiero modelar la temperatura no se tiene en cuenta la memoria, ¿debería?
 Es que no le vemos el sentido a que si tiene memoria M, no venga esa dependencia en el calor que suelta.
+
+
+5.- El coeficiente de lyapunov puede saturar? Me refiero, en compu en el péndulo doble si ponía el tiempo suficientemente largo saturaba.
+Le encuentro sentido porque existe una cota máxima para cada diferencia de coordenadas (antípodas). Como es un valor finito y se toman siempre las misma
+cantidad de medidas, es como un techo que no se debe alcanzar nunca.
