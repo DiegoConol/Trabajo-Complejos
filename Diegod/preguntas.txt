@@ -7,6 +7,7 @@ PREGUNTAS PARA DANIEL MANZANO TUTORÍA 13-5-26
 Las frías tienen una p mayor que las calientes, por lo que aportan mucho menos. ¿Está bien modelado?
 
 3.- Para la presión ahora sí uso la densidad de frías y calientes. Ahora bien, si le he aplicado un factor 'A' a la temperatura, ¿qué factor debo aplicarle a la presión? 
+Para la presión veo mejor que en lugar de tomar los rebotes, que cuente las partículas.
 
 4.- Estamos un poco perdidos para tema demonio. ¿Memoria finita? Eso significa que mientras está durando la simulación se va llenando, se vacía, se va llenando, se vacía y así?
 De ser así, ¿Debe terminar siempre con memoria vacía, verdad?
@@ -17,3 +18,5 @@ Es que no le vemos el sentido a que si tiene memoria M, no venga esa dependencia
 5.- El coeficiente de lyapunov puede saturar? Me refiero, en compu en el péndulo doble si ponía el tiempo suficientemente largo saturaba.
 Le encuentro sentido porque existe una cota máxima para cada diferencia de coordenadas (antípodas). Como es un valor finito y se toman siempre las misma
 cantidad de medidas, es como un techo que no se debe alcanzar nunca.
+
+6.- Los deberes son el pdf que mandó, o hay alguno más? Recuerdo que había algo más pero recuerdo ya si lo hice en su momento o qué. Si hay más, podría poner un aviso en prado?
