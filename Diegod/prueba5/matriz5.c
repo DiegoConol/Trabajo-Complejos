@@ -231,7 +231,7 @@ int main(void)
 
                     puedemoverse=1;
 
-                    //Escojo una dirección aleatoria. 0 es arriba, 1 derecha, 2 abajo, 3 izquierda.
+                    //Escojo una dirección aleatoria. 0 es arriba, 1 derecha, 2 abajo, 3 izquierda. SON PERIODOS EN 4, OSEA QUE 4 arriba, 5 derecha, 6 abajo, 7 izquierda.
 
                     semueve=rand()%4; //Se escoge la dirección de movimiento al azar.
                     contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
@@ -256,7 +256,7 @@ int main(void)
                             {
                                 
                                 //ARRIBA
-                                if (semueve == 0)
+                                if (semueve == 0 || semueve==4)
                                 {
                                     if(i==0) //Si se mueve arriba en la primera fila solo puede rebotar.
                                     {
@@ -292,7 +292,7 @@ int main(void)
                                 }
                                 //DERECHA
                                 
-                                else if (semueve == 1)
+                                else if (semueve == 1 || semueve == 5)
                                 {
                                     if(j==(M-1)) //De nuevo compruebo que no esté en la última columna, ya que aquí solo puede rebotar
                                     {
@@ -327,7 +327,7 @@ int main(void)
                                 }
 
                                 //ABAJO
-                                else if (semueve == 2)
+                                else if (semueve == 2 || semueve==6)
                                 {
                                     if(i==(N-1)) //Compruebo que no esté en la última fila
                                     {
@@ -360,7 +360,7 @@ int main(void)
                                     
                                 }
                                 //IZQUIERDA
-                                else if (semueve == 3)
+                                else if (semueve == 3 || semueve==7)
                                 {
                                     if(j==0) //Compruebo que no esté en la primera columna.
                                     {
@@ -414,7 +414,7 @@ int main(void)
                             while(contador_movimientos<4)
                             {
                                 //ARRIBA
-                                if(semueve==0)
+                                if(semueve==0 ||semueve==4)
                                 {
                                     if(i==0) //Estamos en la primera fila y quiere ir para arriba, nanai.
                                     {
@@ -445,7 +445,7 @@ int main(void)
                                     }
                                 }
                                 //DERECHA
-                                else if(semueve==1)
+                                else if(semueve==1 || semueve==5)
                                 {
                                     if(j==(M-1))
                                     {
@@ -479,7 +479,7 @@ int main(void)
                                     
                                 }
                                 //ABAJO
-                                else if(semueve==2)
+                                else if(semueve==2 || semueve==6)
                                 {
                                     if(i==(N-1))
                                     {
@@ -512,7 +512,7 @@ int main(void)
                                     
                                 }
                                 //IZQUIERDA
-                                else if(semueve==3)
+                                else if(semueve==3 || semueve==7)
                                 {
                                     if(j==0)
                                     {
