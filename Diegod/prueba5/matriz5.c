@@ -46,6 +46,7 @@ int matriz[N][M];           //Matriz principal. Es nuestra cuadrícula.
 int matriz_auxiliar[N][M];  //Matriz en la que se harán cambios. Esto es para no modificar y trabajar en la misma matriz.
 int semueve=0;              //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda.
 int puedemoverse=0;         //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres? 0 indica que no puede moverse, 1 indica que sí puede moverse.
+int contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
 double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse.
 int divisor_columna = M/div_M;
 int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de M, en esa columna (a su derecha) hay una división.
@@ -233,7 +234,7 @@ int main(void)
                     //Escojo una dirección aleatoria. 0 es arriba, 1 derecha, 2 abajo, 3 izquierda.
 
                     semueve=rand()%4; //Se escoge la dirección de movimiento al azar.
-                    int contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
+                    contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
 
                     //De esta forma, no necesitamos un haydireccion y un semueve, solo con esto ya sí se puede calcular. 
 
@@ -410,64 +411,140 @@ int main(void)
                     {
                         if (prob_movimiento >= umbral_hot)
                         {
-                            //ARRIBA
-                            if(semueve==0)
+                            while(contador_movimientos<4)
                             {
-                                if (((i)%divisor_fila == 0) && (i) != 0)
+                                //ARRIBA
+                                if(semueve==0)
                                 {
-                                    matriz_auxiliar[i][j] = 2;   // se queda donde estaba
+                                    if(i==0) //Estamos en la primera fila y quiere ir para arriba, nanai.
+                                    {
+                                        semueve++;
+                                        contador_movimientos++;
+                                    }
+                                    else //Ya no primera fila
+                                    {
+                                        if(matriz_auxiliar[i-1][j]==0) //Compruebo si está vacía
+                                        {
+                                            if ((i)%divisor_fila == 0)
+                                            {
+                                                //Como no puede quedarse donde estaba, rebota.
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                            else
+                                            {
+                                                matriz_auxiliar[i][j] = 0;
+                                                matriz_auxiliar[i-1][j] = 2;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                    }
                                 }
-                                else
+                                //DERECHA
+                                else if(semueve==1)
                                 {
-                                    matriz_auxiliar[i][j] = 0;
-                                    matriz_auxiliar[i-1][j] = 2;
+                                    if(j==(M-1))
+                                    {
+                                        semueve++;
+                                        contador_movimientos++;
+                                    }
+                                    else
+                                    {
+                                        if(matriz_auxiliar[i][j+1]==0)
+                                        {
+                                            if ((j+1)%divisor_columna == 0)
+                                            {
+                                                matriz_auxiliar[i][j] = 0;
+                                                matriz_auxiliar[i][j+1] = 2;
+                                                actua_demonio_hot++;
+                                                valor_demonio = 2;
+                                            }
+                                            else
+                                            {
+                                                matriz_auxiliar[i][j] = 0;
+                                                matriz_auxiliar[i][j+1] = 2;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                        
+                                    }
+                                    
+                                }
+                                //ABAJO
+                                else if(semueve==2)
+                                {
+                                    if(i==(N-1))
+                                    {
+                                        semueve++;
+                                        contador_movimientos++;
+                                    }
+                                    else
+                                    {
+                                        if(matriz_auxiliar[i+1][j]==0)
+                                        {
+                                            if (((i+1)%divisor_fila == 0) && (i+1) != N)
+                                            {
+                                                matriz_auxiliar[i][j]=0;
+                                                matriz_auxiliar[i+1][j]=2;
+                                                actua_demonio_hot++;
+                                                valor_demonio = 2;
+                                            }
+                                            else
+                                            {
+                                                matriz_auxiliar[i][j]=0;
+                                                matriz_auxiliar[i+1][j]=2;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                    }
+                                    
+                                }
+                                //IZQUIERDA
+                                else if(semueve==3)
+                                {
+                                    if(j==0)
+                                    {
+                                        semueve++;
+                                        contador_movimientos++;
+                                    }
+                                    else
+                                    {
+                                        if(matriz_auxiliar[i][j-1]==0)
+                                        {
+                                            if ((j)%divisor_columna == 0) 
+                                            {
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                            else
+                                            {
+                                                matriz_auxiliar[i][j] = 0;
+                                                matriz_auxiliar[i][j-1] = 2;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                    }
+                                    
                                 }
                             }
-                            //DERECHA
-                            else if(semueve==1)
-                            {
-                                if (((j+1)%divisor_columna == 0) && (j+1) != M)
-                                {
-                                    matriz_auxiliar[i][j] = 0;
-                                    matriz_auxiliar[i][j+1] = 2;
-                                    actua_demonio_hot++;
-                                    valor_demonio = 2;
-                                }
-                                else
-                                {
-                                    matriz_auxiliar[i][j] = 0;
-                                    matriz_auxiliar[i][j+1] = 2;
-                                }
-                            }
-                            //ABAJO
-                            else if(semueve==2)
-                            {
-                                if (((i+1)%divisor_fila == 0) && (i+1) != N)
-                                {
-                                    matriz_auxiliar[i][j]=0;
-                                    matriz_auxiliar[i+1][j]=2;
-                                    actua_demonio_hot++;
-                                    valor_demonio = 2;
-                                }
-                                else
-                                {
-                                    matriz_auxiliar[i][j]=0;
-                                    matriz_auxiliar[i+1][j]=2;
-                                }
-                            }
-                            //IZQUIERDA
-                            else if(semueve==3)
-                            {
-                                if (((j)%divisor_columna == 0) && (j) != 0)
-                                {
-                                    matriz_auxiliar[i][j] = 2;   // se queda donde estaba
-                                }
-                                else
-                                {
-                                    matriz_auxiliar[i][j] = 0;
-                                    matriz_auxiliar[i][j-1] = 2;
-                                }
-                            }
+
+                            
                         }
                         
                         //Termina if de caliente
