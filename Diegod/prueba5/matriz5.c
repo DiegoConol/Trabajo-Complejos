@@ -1,4 +1,4 @@
-//AHORA VEMOS QUE EL DEMONIO VERDADERAMENTE ACTÚA, VAMOS A CALCULAR LA ENTROPÍA, TEMPERATURA Y DEMÁS.
+//AHORA CAMBIO EL MOVIMIENTO PARA QUE CALCULAR LA PRESIÓN SEA MÁS FÁCIL
 
 #include <stdio.h>
 #include <string.h>
@@ -28,26 +28,26 @@
 
 
 
-#define N 20                 //Numero de filas.
-#define M 20                 //Numero de columnas.
-#define div_N 5             //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
-#define div_M 5             //Dimension de la sección en columna.
+#define N 20                    //Numero de filas.
+#define M 20                    //Numero de columnas.
+#define div_N 5                 //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
+#define div_M 5                 //Dimension de la sección en columna.
 
-#define part_hot 160         //Número de partículas calientes.
-#define part_cold 160        //Número de partículas frías.
-#define T_TOTAL 1000         //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define part_hot 100            //Número de partículas calientes.
+#define part_cold 100           //Número de partículas frías.
+#define T_TOTAL 500             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
-#define umbral_cold 0.5     //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
-#define umbral_hot 0.1      //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
+#define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 
 
-int matriz[N][M];           //Matriz principal. Es nuestra cuadrícula.
-int matriz_auxiliar[N][M];  //Matriz en la que se harán cambios. Esto es para no modificar y trabajar en la misma matriz.
-int semueve=0;              //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda.
-int puedemoverse=0;         //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres? 0 indica que no puede moverse, 1 indica que sí puede moverse.
-int contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
-double prob_movimiento=0.0; //Variable que tendrá que superar el umbral para moverse.
+int matriz[N][M];               //Matriz principal. Es nuestra cuadrícula.
+int matriz_auxiliar[N][M];      //Matriz en la que se harán cambios. Esto es para no modificar y trabajar en la misma matriz.
+int semueve=0;                  //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cicla en +4, por lo que 4 es arriba, 5 derecha, 6 abajo y 7 izquierda.
+int puedemoverse=0;             //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres? 0 indica que no puede moverse, 1 indica que sí puede moverse.
+int contador_movimientos = 0;   //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
+double prob_movimiento=0.0;     //Variable que tendrá que superar el umbral para moverse.
 int divisor_columna = M/div_M;
 int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de M, en esa columna (a su derecha) hay una división.
 int actua_demonio_cold = 0;     //Veces que actúa el demonio en partículas frías
@@ -56,15 +56,20 @@ int valor_demonio = 0;          //¿Ha actuado en esa iteración el demonio?
 
 
 //Identificación del sub-bloque de matriz en el que está una partícula.
+
 int bloquefila = 0;         //identifica en qué fila de bloques está
 int bloquecolumna=0;        //Identifica en qué columna de bloques está.
 
+
 //Arrays para la densidad: cuenta cuántas partículas hay en cada subsección y las guarda.
+
 int densidad_cold[div_N][div_M];
 int densidad_hot[div_N][div_M];
 int densidad_total[div_N][div_M]; //Por si acaso.
 
+
 //Arrays de presión: cuenta cuantos choques hay.
+
 int presion_cold[div_N][div_M];
 int presion_hot[div_N][div_M];
 int presion_total[div_N][div_M];
@@ -181,9 +186,6 @@ int main(void)
     actua_demonio_cold=0;
     actua_demonio_hot=0;
 
-    //Array de movimiento. La primera posicion es arriba, la segunda derecha, tercera abajo y cuarta izquierda. 0 indica libre, 1 indica ocupado.
-    int movimiento[4];
-
     //HAGO EL BUCLE GRANDE. NO PARARÁ HASTA QUE TERMINE T_TOTAL
     int contador=0;
 
@@ -240,6 +242,10 @@ int main(void)
 
                     //Ahora escojo una probabilidad de que se mueva.
                     prob_movimiento = (double)rand()/ (double) RAND_MAX; //Esto da una probabilidad uniforme. El double le hace casting.
+                    
+                    
+                    
+                    
                     //Para el caso de que sea fría
                     if (matriz[i][j]==1)
                     {
@@ -275,11 +281,13 @@ int main(void)
                                                 matriz_auxiliar[i-1][j] = 1;
                                                 actua_demonio_cold++;
                                                 valor_demonio = 1;
+                                                break;
                                             }
                                             else
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i-1][j] = 1;
+                                                break;
                                             }
                                         }
                                         else //Ahora es si está llena la celda de arriba
@@ -290,8 +298,10 @@ int main(void)
                                         }
                                     }                                
                                 }
+
+
+
                                 //DERECHA
-                                
                                 else if (semueve == 1 || semueve == 5)
                                 {
                                     if(j==(M-1)) //De nuevo compruebo que no esté en la última columna, ya que aquí solo puede rebotar
@@ -315,6 +325,7 @@ int main(void)
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i][j+1] = 1;
+                                                break;
                                             }
                                         } 
                                         else //Ahora está ocupada
@@ -325,6 +336,9 @@ int main(void)
                                         }    
                                     }
                                 }
+
+
+
 
                                 //ABAJO
                                 else if (semueve == 2 || semueve==6)
@@ -349,6 +363,7 @@ int main(void)
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i+1][j] = 1;
+                                                break;
                                             }
                                         }
                                         else //Ahora está ocupada
@@ -356,9 +371,12 @@ int main(void)
                                             semueve++;
                                             contador_movimientos++;
                                         } 
-                                    }
-                                    
+                                    }                                    
                                 }
+
+
+
+
                                 //IZQUIERDA
                                 else if (semueve == 3 || semueve==7)
                                 {
@@ -377,11 +395,13 @@ int main(void)
                                                 matriz_auxiliar[i][j-1] = 1;
                                                 actua_demonio_cold++;
                                                 valor_demonio = 1;
+                                                break;
                                             }
                                             else
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i][j-1] = 1;
+                                                break;
                                             }   
                                         }
                                         else
@@ -394,6 +414,8 @@ int main(void)
                                 }
                             }
 
+
+
                             if(contador_movimientos==4) //Ha ciclado por completo y no ha enocntrado posibilidad de mvto.
                             {
                                 matriz_auxiliar[i][j]=1; //No se ha podido mover, se queda en su sitio
@@ -402,10 +424,14 @@ int main(void)
 
                             //Termina el if de probabilidad < prob_umbral fría
                         }
-
-
+                       
                         //Termina el if de fría
                     }
+
+
+
+
+
                     //Para el caso de que sea caliente
                     else
                     {
@@ -413,6 +439,8 @@ int main(void)
                         {
                             while(contador_movimientos<4)
                             {
+
+
                                 //ARRIBA
                                 if(semueve==0 ||semueve==4)
                                 {
@@ -435,6 +463,7 @@ int main(void)
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i-1][j] = 2;
+                                                break;
                                             }
                                         }
                                         else
@@ -444,6 +473,10 @@ int main(void)
                                         }
                                     }
                                 }
+
+
+
+
                                 //DERECHA
                                 else if(semueve==1 || semueve==5)
                                 {
@@ -462,22 +495,26 @@ int main(void)
                                                 matriz_auxiliar[i][j+1] = 2;
                                                 actua_demonio_hot++;
                                                 valor_demonio = 2;
+                                                break;
                                             }
                                             else
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i][j+1] = 2;
+                                                break;
                                             }
                                         }
                                         else
                                         {
                                             semueve++;
                                             contador_movimientos++;
-                                        }
-                                        
-                                    }
-                                    
+                                        }                                        
+                                    }                                    
                                 }
+
+
+
+
                                 //ABAJO
                                 else if(semueve==2 || semueve==6)
                                 {
@@ -496,11 +533,13 @@ int main(void)
                                                 matriz_auxiliar[i+1][j]=2;
                                                 actua_demonio_hot++;
                                                 valor_demonio = 2;
+                                                break;
                                             }
                                             else
                                             {
                                                 matriz_auxiliar[i][j]=0;
                                                 matriz_auxiliar[i+1][j]=2;
+                                                break;
                                             }
                                         }
                                         else
@@ -508,9 +547,12 @@ int main(void)
                                             semueve++;
                                             contador_movimientos++;
                                         }
-                                    }
-                                    
+                                    }                                    
                                 }
+
+
+
+
                                 //IZQUIERDA
                                 else if(semueve==3 || semueve==7)
                                 {
@@ -532,6 +574,7 @@ int main(void)
                                             {
                                                 matriz_auxiliar[i][j] = 0;
                                                 matriz_auxiliar[i][j-1] = 2;
+                                                break;
                                             }
                                         }
                                         else
@@ -539,13 +582,24 @@ int main(void)
                                             semueve++;
                                             contador_movimientos++;
                                         }
-                                    }
-                                    
+                                    }                                    
                                 }
+
+                            }
+
+
+                            //De nuevo, si cicla y no encuentra pues que se quede donde está.
+                            if(contador_movimientos==4) //Ha ciclado por completo y no ha enocntrado posibilidad de mvto.
+                            {
+                                matriz_auxiliar[i][j]=2; //No se ha podido mover, se queda en su sitio
                             }
 
                             
                         }
+
+
+
+
                         
                         //Termina if de caliente
                     }
