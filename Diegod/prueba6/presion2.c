@@ -40,6 +40,8 @@
 #define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
+#define MEMORIA 100
+
 
 
 int matriz[N][M];               //Matriz principal. Es nuestra cuadrícula.
@@ -56,6 +58,9 @@ int valor_demonio = 0;          //¿Ha actuado en esa iteración el demonio?
 
 int pl[div_N][div_M][4]; // Matriz que guarda la presión en cada celda. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cada vez que una partícula se quiere mover en esa dirección y no puede, se suma 1 a esa posición
 int pr[div_N][div_M][4]; // Igual que antes, Pl indica lento, partículas frías. Pr indica rápido, partículas calientes.
+
+int memory[1][2];
+float hamiltoniano[2][T_TOTAL];
 
 
 //Identificación del sub-bloque de matriz en el que está una partícula.
@@ -137,6 +142,7 @@ void inicializar(int matriz[N][M], int pl[div_N][div_M][4], int pr[div_N][div_M]
 
 
 
+
 //Creo el programa entero
 
 int main(void)
@@ -157,10 +163,14 @@ int main(void)
     FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos. El paso se diferencia por salto de línea vacío.
     FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se se guarda la partícula sobre la que ha actuado el demonio. 0=no ha actuado, 1=sobre fría, 2=sobre caliente. El paso se diferencia por salto de línea vacío.
     FILE *densidad_file = fopen("densidad.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+    FILE *densidad_hot_file = fopen("densidad_hot.txt", "w"); //Densidad de calientes.
+    FILE *densidad_cold_file = fopen("densidad_cold.txt", "w"); //Densidad de frias.
     FILE *presion_cold_file = fopen("presionL.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
     FILE *presion_hot_file = fopen("presionR.txt", "w");
+    FILE *memoria = fopen("memoria.txt", "w");
+    FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
 
-    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL) {
+    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria==NULL || hamiltoniano_file==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -174,6 +184,15 @@ int main(void)
 
     //Inicializo la matriz llamando a la función
     inicializar(matriz, pl, pr);
+
+    memory[0][0] = 0; //Inicializo la memoria a 0
+    memory[0][1] = 0; //Inicializo la memoria a 0
+
+    for (int i=0; i<T_TOTAL; i++)
+    {
+        hamiltoniano[0][i] = 0;
+        hamiltoniano[1][i] = 0;
+    }
 
     //Guardo esta iteración
     for (int i = 0; i < N; i++) {
@@ -210,9 +229,10 @@ int main(void)
 
 
 
-
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////          BUCLE GENERAL           //////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -281,7 +301,7 @@ int main(void)
                                     if(i==0) //Si se mueve arriba en la primera fila solo puede rebotar.
                                     {
                                         //Aquí se tiene que sumar 1 la presión a la celda que corresponda.
-                                        pl[0][(j+1)/div_M][0]++; 
+                                        pl[i/divisor_fila][j/divisor_columna][0]++; 
                                         //Como rebota, cambio la dirección y sumo uno a contador de movimientos
                                         semueve++;
                                         contador_movimientos++;
@@ -296,6 +316,14 @@ int main(void)
                                                 matriz_auxiliar[i-1][j] = 1;
                                                 actua_demonio_cold++;
                                                 valor_demonio = 1;
+                                                memory[0][0]++;
+                                                hamiltoniano[0][contador] += -(1-umbral_cold)*log2(1-umbral_cold);
+                                                if (memory[0][0] >= MEMORIA)
+                                                {
+                                                    fprintf(memoria, "%d %d \n", memory[0][0], contador);
+                                                    memory[0][0] = 0;
+                                                    memory[0][1]++;
+                                                }
                                                 break;
                                             }
                                             else
@@ -307,12 +335,13 @@ int main(void)
                                         }
                                         else //Ahora es si está llena la celda de arriba
                                         {
-                                            semueve++; //Ciclo, ahora me voy a la derecha y añado uno al contador de movimiento. 
-                                            contador_movimientos++;
+                                            
                                             if ((i)%divisor_fila == 0)
                                             {
-                                                pl[(i+1)/div_N][(j+1)/div_M][0]++;
+                                                pl[i/divisor_fila][j/divisor_columna][0]++;
                                             }
+                                            semueve++; //Ciclo, ahora me voy a la derecha y añado uno al contador de movimiento. 
+                                            contador_movimientos++;
                                             
                                         }
                                     }                                
@@ -325,7 +354,7 @@ int main(void)
                                 {
                                     if(j==(M-1)) //De nuevo compruebo que no esté en la última columna, ya que aquí solo puede rebotar
                                     {
-                                        pl[(i+1)/div_N][div_M-1][1]++;
+                                        pl[i/divisor_fila][j/divisor_columna][1]++;
                                         semueve++;
                                         contador_movimientos++;
                                     }
@@ -338,7 +367,7 @@ int main(void)
                                                 //Ahora debería ciclar de nuevo ya que no puede atravesar ese muro.
                                                 semueve++;
                                                 contador_movimientos++;
-                                                pl[i/div_N][j/div_M][1]++;
+                                                pl[i/divisor_fila][j/divisor_columna][1]++;
                                                 
                                             }
                                             else
@@ -350,13 +379,14 @@ int main(void)
                                         } 
                                         else //Ahora está ocupada
                                         {
+                                            
+                                            if ((j+1)%divisor_columna == 0)
+                                            {
+                                                pl[i/divisor_fila][j/divisor_columna][1]++;
+                                            }
                                             //De nuevo, ciclamos
                                             semueve++;
                                             contador_movimientos++;
-                                            if ((j+1)%divisor_columna == 0)
-                                            {
-                                                pl[(i+1)/div_N][(j+1)/div_M][1]++;
-                                            }
                                         }    
                                     }
                                 }
@@ -371,7 +401,7 @@ int main(void)
                                     {
                                         semueve++;
                                         contador_movimientos++;
-                                        pl[div_N-1][(j+1)/div_M][2]++;
+                                        pl[i/divisor_fila][j/divisor_columna][2]++;
                                     }
                                     else
                                     {
@@ -382,7 +412,7 @@ int main(void)
                                                 //Volvemos a ciclar
                                                 semueve++;
                                                 contador_movimientos++;
-                                                pl[(i+1)/div_N][(j+1)/div_M][2]++;
+                                                pl[i/divisor_fila][j/divisor_columna][2]++;
                                                 
                                             }
                                             else
@@ -394,12 +424,13 @@ int main(void)
                                         }
                                         else //Ahora está ocupada
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((i+1)%divisor_fila == 0)
                                             {
-                                                pl[(i+1)/div_N][(j+1)/div_M][2]++;
+                                                pl[i/divisor_fila][j/divisor_columna][2]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         } 
                                     }                                    
                                 }
@@ -414,7 +445,7 @@ int main(void)
                                     {
                                     semueve++;
                                     contador_movimientos++;
-                                    pl[(i+1)/div_N][0][3]++; 
+                                    pl[i/divisor_fila][j/divisor_columna][3]++; 
                                     }
                                     else    //Ya no estamos en la primera columna
                                     {
@@ -426,6 +457,14 @@ int main(void)
                                                 matriz_auxiliar[i][j-1] = 1;
                                                 actua_demonio_cold++;
                                                 valor_demonio = 1;
+                                                memory[0][0]++;
+                                                hamiltoniano[0][contador] += -(1-umbral_cold)*log2(1-umbral_cold);
+                                                if (memory[0][0] >= MEMORIA)
+                                                {
+                                                    fprintf(memoria, "%d %d \n", memory[0][0], contador);
+                                                    memory[0][0] = 0;
+                                                    memory[0][1]++;
+                                                }
                                                 break;
                                             }
                                             else
@@ -437,12 +476,13 @@ int main(void)
                                         }
                                         else
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((j)%divisor_columna == 0)
                                             {
-                                                pl[(i+1)/div_N][(j+1)/div_M][3]++;
+                                                pl[i/divisor_fila][j/divisor_columna][3]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         }
                                     }
                                     
@@ -483,7 +523,7 @@ int main(void)
                                     {
                                         semueve++;
                                         contador_movimientos++;
-                                        pr[0][j/div_M][0]++;
+                                        pr[i/divisor_fila][j/divisor_columna][0]++;
                                     }
                                     else //Ya no primera fila
                                     {
@@ -494,7 +534,7 @@ int main(void)
                                                 //Como no puede quedarse donde estaba, rebota.
                                                 semueve++;
                                                 contador_movimientos++;
-                                                pr[i/div_N][j/div_M][0]++;
+                                                pr[i/divisor_fila][j/divisor_columna][0]++;
                                             }
                                             else
                                             {
@@ -505,12 +545,13 @@ int main(void)
                                         }
                                         else
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((i)%divisor_fila == 0)
                                             {
-                                                pr[i/div_N][j/div_M][0]++;
+                                                pr[i/divisor_fila][j/divisor_columna][0]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         }
                                     }
                                 }
@@ -525,7 +566,7 @@ int main(void)
                                     {
                                         semueve++;
                                         contador_movimientos++;
-                                        pr[i/div_N][div_M][1]++;
+                                        pr[i/divisor_fila][j/divisor_columna][1]++;
                                     }
                                     else
                                     {
@@ -537,6 +578,14 @@ int main(void)
                                                 matriz_auxiliar[i][j+1] = 2;
                                                 actua_demonio_hot++;
                                                 valor_demonio = 2;
+                                                hamiltoniano[1][contador] += -(1-umbral_hot)*log2(1-umbral_hot);
+                                                memory[0][0]++;
+                                                if (memory[0][0] >= MEMORIA)
+                                                {
+                                                    fprintf(memoria, "%d %d \n", memory[0][0], contador);
+                                                    memory[0][0] = 0;
+                                                    memory[0][1]++;
+                                                }
                                                 break;
                                             }
                                             else
@@ -548,12 +597,13 @@ int main(void)
                                         }
                                         else
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((j+1)%divisor_columna == 0)
                                             {
-                                                pr[i/div_N][j/div_M][1]++;
+                                                pr[i/divisor_fila][j/divisor_columna][1]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         }                                        
                                     }                                    
                                 }
@@ -568,7 +618,7 @@ int main(void)
                                     {
                                         semueve++;
                                         contador_movimientos++;
-                                        pr[div_N][j/div_M][2]++;
+                                        pr[i/divisor_fila][j/divisor_columna][2]++;
                                     }
                                     else
                                     {
@@ -580,6 +630,14 @@ int main(void)
                                                 matriz_auxiliar[i+1][j]=2;
                                                 actua_demonio_hot++;
                                                 valor_demonio = 2;
+                                                memory[0][0]++;
+                                                hamiltoniano[1][contador] += -(1-umbral_hot)*log2(1-umbral_hot);
+                                                if (memory[0][0] >= MEMORIA)
+                                                {
+                                                    fprintf(memoria, "%d %d \n", memory[0][0], contador);
+                                                    memory[0][0] = 0;
+                                                    memory[0][1]++;
+                                                }
                                                 break;
                                             }
                                             else
@@ -591,12 +649,13 @@ int main(void)
                                         }
                                         else
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((i+1)%divisor_fila == 0)
                                             {
-                                                pr[i/div_N][j/div_M][2]++;
+                                                pr[i/divisor_fila][j/divisor_columna][2]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         }
                                     }                                    
                                 }
@@ -611,7 +670,7 @@ int main(void)
                                     {
                                         semueve++;
                                         contador_movimientos++;
-                                        pr[i/div_N][0][3]++;
+                                        pr[i/divisor_fila][j/divisor_columna][3]++;
                                     }
                                     else
                                     {
@@ -621,7 +680,7 @@ int main(void)
                                             {
                                                 semueve++;
                                                 contador_movimientos++;
-                                                pr[i/div_N][j/div_M][3]++;
+                                                pr[i/divisor_fila][j/divisor_columna][3]++;
                                             }
                                             else
                                             {
@@ -632,12 +691,13 @@ int main(void)
                                         }
                                         else
                                         {
-                                            semueve++;
-                                            contador_movimientos++;
+                                            
                                             if ((j)%divisor_columna == 0)
                                             {
-                                                pr[i/div_N][j/div_M][3]++;
+                                                pr[i/divisor_fila][j/divisor_columna][3]++;
                                             }
+                                            semueve++;
+                                            contador_movimientos++;
                                         }
                                     }                                    
                                 }
@@ -783,6 +843,7 @@ int main(void)
         //Termino de barrir la fila
         }
 
+
         //Guardo esta matriz en el archivo. Los arrays de frío y caliente no los guardo por ahora. PODRÍA HACERLO PERO POR LA SUPOSICIÓN ANTERIOR, SOLO ESTÁN AHÍ POR SI ACASO.
 
         for(int i=0; i<div_N; i++)
@@ -790,21 +851,43 @@ int main(void)
             for(int j=0; j<div_M; j++)
             {
                 fprintf(densidad_file, "%d", densidad_total[i][j]);
+                fprintf(densidad_hot_file, "%d", densidad_hot[i][j]);
+                fprintf(densidad_cold_file, "%d", densidad_cold[i][j]);
                 if(j<div_M-1)
                 {
                     fprintf(densidad_file, "\t");
+                    fprintf(densidad_hot_file, "\t");
+                    fprintf(densidad_cold_file, "\t");
                 }
             }
             fprintf(densidad_file, "\n");
+            fprintf(densidad_hot_file, "\n");
+            fprintf(densidad_cold_file, "\n");
         }
-       fprintf(densidad_file, "\n");
+        fprintf(densidad_file, "\n");
+        fprintf(densidad_hot_file, "\n");
+        fprintf(densidad_cold_file, "\n");
 
-
+        for (int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                for (int k=0; k<4; k++)
+                {
+                    pl[i][j][k]=0;
+                    pr[i][j][k]=0;
+                }
+            }
+        } 
+        
+        fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
 
 
         contador++;
         //Termina el bucle total de movimiento.
     }
+
+    fprintf(memoria, "%d\n", memory[0][0]);
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -829,6 +912,12 @@ int main(void)
     fclose(matriz_file);
     fclose(demonio_file);
     fclose(densidad_file);
+    fclose(densidad_hot_file);
+    fclose(densidad_cold_file);
+    fclose(presion_cold_file);
+    fclose(presion_hot_file);
+    fclose(memoria);
+    fclose(hamiltoniano_file);
     printf("Lo he hecho todo bien :)");
     return 0;    
 }
