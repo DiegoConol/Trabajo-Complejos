@@ -75,6 +75,14 @@ int densidad_cold[div_N][div_M];
 int densidad_hot[div_N][div_M];
 int densidad_total[div_N][div_M]; //Por si acaso.
 
+//Arrays para la entropía y su cálculo.
+
+int num_sub = N/div_N * M/div_M;    //Dice las celdas totales que tiene cada subseccion
+int num_holes = 0;                  //Variable auxiliar para hacer que numero_huecos = N_total - n_frias - n_calientes
+double omega;                       //Variable para calcular la entropía
+double entropy_sub[div_N][div_M];   //Entropía en cada subsección
+double entropy_total;               //Entropía total del sistema
+
 
 
 
@@ -169,8 +177,10 @@ int main(void)
     FILE *presion_hot_file = fopen("presionR.txt", "w");
     FILE *memoria = fopen("memoria.txt", "w");
     FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
+    FILE *entropy_sub_file = fopen("entropy_subdivisions.txt", "w"); //En este archivo irá la evolución de la entropía por subsecciones.
+    FILE *entropy_total_file = fopen("entropy_total.txt", "w"); //Y aquí la total, que será un número en cada iteración.
 
-    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria==NULL || hamiltoniano_file==NULL) {
+    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria==NULL || hamiltoniano_file==NULL || entropy_sub_file== NULL || entropy_total_file== NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -881,6 +891,74 @@ int main(void)
         } 
         
         fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
+
+        
+        
+
+
+
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////         ENTROPÍA            ///////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        // PLANTEMIENTO /////////////////////////////
+        //
+        //En cada iteración (incluyendo la inicial) se calculará la entropía, contando el número de partículas que hay de cada tipo (fria, caliente, hueco).
+        //Esto es lo que hace ya la DENSIDAD, así que no hace falta calcularlo. 
+        //La entropía sigue la fórmula S= k_B * ln(Omega), con Omega= N_total! / (N_frio! * N_caliente! * N_vacio!)
+        //Se hace para cada subsección, se calcula la entropía de esa subsección, se almacena en una matriz y luego se suman todas para la total
+        //Se asigna entropía 0 cuando todos las celdas están ocupadas por la misma partícula
+        //Estaría bien anotar cuando el demonio actúa para poder ver cambios.
+        //
+        ///////////////////////////////////////////////////
+
+        //Para calcular omega usaré la función tgamma(double x).
+
+        omega=0.0;          //Por si acaso
+        entropy_total=0.0;   //La inicializo a 0 por si acaso.
+
+        for(int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                num_holes=num_sub-densidad_cold[i][j]-densidad_hot[i][j];
+                //Lo paso todo a float multiplicando por 1.0
+                omega = tgamma(num_sub*1.0+1.0)/(tgamma(densidad_cold[i][j]*1.0+1.0)*tgamma(densidad_hot[i][j]*1.0+1.0)*tgamma(num_holes*1.0+1.0));
+                entropy_sub[i][j]=log(omega); //FALTARÍA MULTIPLICARLO POR KB, PERO ¿QUÉ UNIDADES TIENE?
+                entropy_total+=entropy_sub[i][j];
+            }
+        }
+
+        //Con la entropía calculada la printeo
+
+        for(int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                fprintf(entropy_sub_file, "%lf", entropy_sub[i][j]);
+                if(j<div_M-1)
+                {
+                    fprintf(entropy_sub_file, "\t");
+                }
+                
+            }
+            fprintf(entropy_sub_file, "\n");
+        }
+        fprintf(entropy_sub_file, "\n");
+
+
+        //Printeo también la total
+        fprintf(entropy_total_file, "%lf", entropy_total);
+        fprintf(entropy_total_file, "\n");
+
+
+
+
+
 
 
         contador++;
