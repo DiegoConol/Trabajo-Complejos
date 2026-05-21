@@ -35,9 +35,9 @@
 
 #define part_hot 100            //Número de partículas calientes.
 #define part_cold 100           //Número de partículas frías.
-#define T_TOTAL 500             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define T_TOTAL 200             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
-#define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_cold 0.6         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 
@@ -722,7 +722,7 @@ int main(void)
             }
             fprintf(densidad_file, "\n");
         }
-       fprintf(densidad_file, "\n");
+        fprintf(densidad_file, "\n");
 
 
 
