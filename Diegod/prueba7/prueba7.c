@@ -1,4 +1,4 @@
-//AHORA CAMBIO EL MOVIMIENTO PARA QUE CALCULAR LA PRESIÓN SEA MÁS FÁCIL
+//VAMOS A ESCRIBIR LA PRESIÓN MEDIDADA.
 
 #include <stdio.h>
 #include <string.h>
@@ -74,6 +74,10 @@ int bloquecolumna=0;        //Identifica en qué columna de bloques está.
 int densidad_cold[div_N][div_M];
 int densidad_hot[div_N][div_M];
 int densidad_total[div_N][div_M]; //Por si acaso.
+
+float pl2[div_N][div_M];    //Estas son las presiones y densidades medias.
+float pr2[div_N][div_M];
+float densidad_total2[div_N][div_M];
 
 //Arrays para la entropía y su cálculo.
 
@@ -171,16 +175,28 @@ int main(void)
     FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos. El paso se diferencia por salto de línea vacío.
     FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se se guarda la partícula sobre la que ha actuado el demonio. 0=no ha actuado, 1=sobre fría, 2=sobre caliente. El paso se diferencia por salto de línea vacío.
     FILE *densidad_file = fopen("densidad.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
-    FILE *densidad_hot_file = fopen("densidad_hot.txt", "w"); //Densidad de calientes.
-    FILE *densidad_cold_file = fopen("densidad_cold.txt", "w"); //Densidad de frias.
     FILE *presion_cold_file = fopen("presionL.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
     FILE *presion_hot_file = fopen("presionR.txt", "w");
     FILE *memoria = fopen("memoria.txt", "w");
     FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
+
+    FILE *densidad_file2 = fopen("densidad2.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+    FILE *presion_cold_file2 = fopen("presionL2.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
+    FILE *presion_hot_file2 = fopen("presionR2.txt", "w");
+
+
+    FILE *densidad_hot_file = fopen("densidad_hot.txt", "w"); //Densidad de calientes.
+    FILE *densidad_cold_file = fopen("densidad_cold.txt", "w"); //Densidad de frias.
+    
     FILE *entropy_sub_file = fopen("entropy_subdivisions.txt", "w"); //En este archivo irá la evolución de la entropía por subsecciones.
     FILE *entropy_total_file = fopen("entropy_total.txt", "w"); //Y aquí la total, que será un número en cada iteración.
 
     if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria==NULL || hamiltoniano_file==NULL || entropy_sub_file== NULL || entropy_total_file== NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    if ( densidad_file2==NULL || presion_cold_file2==NULL || presion_hot_file2==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -239,16 +255,12 @@ int main(void)
 
 
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////          BUCLE GENERAL           //////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-
-    
     while(contador<T_TOTAL)
     {   
         //Inicializo la matriz auxiliar a la matriz. La matriz auxiliar la usaré para poner los cambios de matriz principal. Luego la igualaré y el bucle estará completo.
@@ -259,6 +271,19 @@ int main(void)
                 matriz_auxiliar[i][j]=matriz[i][j];
             }
         }
+
+        //Inicializo las presiones a 0
+        for (int i=0; i<div_N; i++)
+        {
+            for(int j=0; j<div_M; j++)
+            {
+                for (int k=0; k<4; k++)
+                {
+                    pl[i][j][k]=0;
+                    pr[i][j][k]=0;
+                }
+            }
+        } 
 
 
         for (int i=0; i<N; i++)
@@ -765,7 +790,7 @@ int main(void)
         fprintf(matriz_file, "\n");
 
 
-        //Guardo ahora las presiones
+        //Guardo ahora las presiones y las voy sumando a la media.
 
         for (int i=0; i<div_N; i++)
         {
@@ -773,6 +798,8 @@ int main(void)
             {
                 fprintf(presion_cold_file, "%d", pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3]);
                 fprintf(presion_hot_file, "%d", pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3]);
+                pl2[i][j] += (pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3])*1.0;
+                pr2[i][j] += (pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3])*1.0;
                 if(j<div_M-1)
                 {
                     fprintf(presion_cold_file, "\t");
@@ -784,7 +811,6 @@ int main(void)
         }
         fprintf(presion_cold_file, "\n");
         fprintf(presion_hot_file, "\n");
-
 
 
 
@@ -856,16 +882,18 @@ int main(void)
         //Termino de barrir la fila
         }
 
+        
 
-        //Guardo esta matriz en el archivo. Los arrays de frío y caliente no los guardo por ahora. PODRÍA HACERLO PERO POR LA SUPOSICIÓN ANTERIOR, SOLO ESTÁN AHÍ POR SI ACASO.
+        //Guardo esta matriz en el archivo. Tanto la total como las frías y calientes.
 
-        for(int i=0; i<div_N; i++)
+         for(int i=0; i<div_N; i++)
         {
             for(int j=0; j<div_M; j++)
             {
                 fprintf(densidad_file, "%d", densidad_total[i][j]);
                 fprintf(densidad_hot_file, "%d", densidad_hot[i][j]);
                 fprintf(densidad_cold_file, "%d", densidad_cold[i][j]);
+                densidad_total2[i][j] += densidad_total[i][j];
                 if(j<div_M-1)
                 {
                     fprintf(densidad_file, "\t");
@@ -881,26 +909,40 @@ int main(void)
         fprintf(densidad_hot_file, "\n");
         fprintf(densidad_cold_file, "\n");
 
-        for (int i=0; i<div_N; i++)
-        {
-            for(int j=0; j<div_M; j++)
+        //Cada 5 pasos se deben guardar las medias de: presión y densidad.
+
+        if ((contador+1) % 5 == 0){
+
+            for(int i=0; i<div_N; i++)
             {
-                for (int k=0; k<4; k++)
+                for(int j=0; j<div_M; j++)
                 {
-                    pl[i][j][k]=0;
-                    pr[i][j][k]=0;
+                    fprintf(densidad_file2, "%lf", densidad_total2[i][j]/5.0);
+                    fprintf(presion_cold_file2, "%lf", pl2[i][j]/5.0);
+                    fprintf(presion_hot_file2, "%lf", pr2[i][j]/5.0);
+                    if(j<div_M-1)
+                    {
+                        fprintf(densidad_file2, "\t");
+                        fprintf(presion_cold_file2, "\t");
+                        fprintf(presion_hot_file2, "\t");
+                    }
+                    densidad_total2[i][j]=0.0;
+                    pl2[i][j]=0.0;
+                    pr2[i][j]=0.0;
                 }
+                fprintf(densidad_file2, "\n");
+                fprintf(presion_cold_file2, "\n");
+                fprintf(presion_hot_file2, "\n");
             }
-        } 
+            fprintf(densidad_file2, "\n");
+            fprintf(presion_cold_file2, "\n");
+            fprintf(presion_hot_file2, "\n");
+        }
+
         
         fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
 
-        
-        
-
-
-
-        
+         
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////         ENTROPÍA            ///////////////////////////////////////////////////////////
@@ -958,12 +1000,6 @@ int main(void)
         fprintf(entropy_total_file, "%lf", entropy_total);
         fprintf(entropy_total_file, "\n");
 
-
-
-
-
-
-
         contador++;
         //Termina el bucle total de movimiento.
     }
@@ -993,8 +1029,6 @@ int main(void)
     fclose(matriz_file);
     fclose(demonio_file);
     fclose(densidad_file);
-    fclose(densidad_hot_file);
-    fclose(densidad_cold_file);
     fclose(presion_cold_file);
     fclose(presion_hot_file);
     fclose(memoria);
