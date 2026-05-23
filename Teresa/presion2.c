@@ -75,6 +75,10 @@ int densidad_cold[div_N][div_M];
 int densidad_hot[div_N][div_M];
 int densidad_total[div_N][div_M]; //Por si acaso.
 
+float pl2[div_N][div_M]; 
+float pr2[div_N][div_M];
+float densidad_total2[div_N][div_M];
+
 
 
 
@@ -168,7 +172,16 @@ int main(void)
     FILE *memoria = fopen("memoria.txt", "w");
     FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
 
+    FILE *densidad_file2 = fopen("densidad2.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+    FILE *presion_cold_file2 = fopen("presionL2.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
+    FILE *presion_hot_file2 = fopen("presionR2.txt", "w");
+
     if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria==NULL || hamiltoniano_file==NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    if ( densidad_file2==NULL || presion_cold_file2==NULL || presion_hot_file2==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -235,7 +248,8 @@ int main(void)
 
 
 
-    
+    int promediador = 1;
+
     while(contador<T_TOTAL)
     {   
         //Inicializo la matriz auxiliar a la matriz. La matriz auxiliar la usaré para poner los cambios de matriz principal. Luego la igualaré y el bucle estará completo.
@@ -757,6 +771,8 @@ int main(void)
             {
                 fprintf(presion_cold_file, "%d", pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3]);
                 fprintf(presion_hot_file, "%d", pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3]);
+                pl2[i][j] += pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3];
+                pr2[i][j] += pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3];
                 if(j<div_M-1)
                 {
                     fprintf(presion_cold_file, "\t");
@@ -799,6 +815,9 @@ int main(void)
                 densidad_cold[i][j]=0;
                 densidad_hot[i][j]=0;
                 densidad_total[i][j]=0;
+                densidad_total2[i][j]=0.0;
+                pl2[i][j]=0.0;
+                pr2[i][j]=0.0;
             }
         }
 
@@ -848,9 +867,11 @@ int main(void)
             for(int j=0; j<div_M; j++)
             {
                 fprintf(densidad_file, "%d", densidad_total[i][j]);
+                densidad_total2[i][j] += densidad_total[i][j];
                 if(j<div_M-1)
                 {
                     fprintf(densidad_file, "\t");
+                    
                 }
             }
             fprintf(densidad_file, "\n");
@@ -871,6 +892,32 @@ int main(void)
         
         fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
 
+
+        if (promediador % 5 == 0){
+
+            for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    fprintf(densidad_file2, "%d", densidad_total2[i][j]/5.0);
+                    fprintf(presion_cold_file2, "%d", pl2[i][j]/5.0);
+                    fprintf(presion_hot_file2, "%d", pr2[i][j]/5.0);
+                    if(j<div_M-1)
+                    {
+                        fprintf(densidad_file2, "\t");
+                        fprintf(presion_cold_file2, "\t");
+                        fprintf(presion_hot_file2, "\t");
+                    }
+                    densidad_total2[i][j]=0.0;
+                    pl2[i][j]=0.0;
+                    pr2[i][j]=0.0;
+                }
+                fprintf(densidad_file, "\n");
+            }
+            fprintf(densidad_file, "\n");
+        }
+
+        promediador++;
 
         contador++;
         //Termina el bucle total de movimiento.
