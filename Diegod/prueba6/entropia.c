@@ -11,7 +11,7 @@
 //
 //En cada iteración (incluyendo la inicial) se calculará la entropía, contando el número de partículas que hay de cada tipo (fria, caliente, hueco).
 //Esto es lo que hace ya la DENSIDAD, así que no hace falta calcularlo. 
-//La entropía sigue la fórmula S= k_B * ln(Gamma), con Gamma= N_total! / (N_frio! * N_caliente! * N_vacio!)
+//La entropía sigue la fórmula S= k_B * ln(Omega), con Omega= N_total! / (N_frio! * N_caliente! * N_vacio!)
 //Se hace para cada subsección, se calcula la entropía de esa subsección, se almacena en una matriz y luego se suman todas para la total
 //Se asigna entropía 0 cuando todos las celdas están ocupadas por la misma partícula
 //Estaría bien anotar cuando el demonio actúa para poder ver cambios.
@@ -80,19 +80,63 @@ int densidad_total[div_N][div_M]; //Por si acaso.
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-double gamma [div_N][div_M];
+double Omega [div_N][div_M];    //Para luego calcular la entropía
+int num_cold[div_N][div_M][T_TOTAL];
+int num_hot[div_N][div_M][T_TOTAL];
 
 
 int main(void)
 {
 
-    FILE *densidad_hot_file = fopen("densidad_hot.txt", "w");
+    FILE *densidad_hot_file = fopen("densidad_hot.txt", "r");
+    FILE *densidad_cold_file = fopen("densidad_cold.txt", "r");
+    FILE *entropy_sub_file = fopen("entropy_subdivisions", "w"); //En este archivo irá la evolución de la entropía por subsecciones.
+    FILE *entropy_total_file = fopen("entropy_total.txt", "w"); //Y aquí la total, que será un número en cada iteración.
 
-    if(densidad_hot_file == NULL)
+
+    if(densidad_hot_file == NULL || densidad_cold_file == NULL || entropy_sub_file== NULL || entropy_total_file== NULL )
     {
         printf("No he abierto bien el archivo JAJAJA. \n");
         return 1;
     }
+
+
+
+
+    
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////      BUCLE PRINCIPAL         //////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+    //Leo las densidades totales, las guardo en un array de 3 dimensiones.
+    //Estos arrays son 
+
+    int contador=0;
+
+    while(contador < T_TOTAL)
+    {
+        
+
+
+
+
+        contador++;
+    }
+
+
+
+
+
+
+
+
 
 
     fclose(densidad_hot_file);
