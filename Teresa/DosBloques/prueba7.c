@@ -71,7 +71,7 @@ int memory[1][2];
 float hamiltoniano[2][T_TOTAL];
 
 float H;
-float H_total[tope][1];
+float H_total[tope][2];
 float Popen;
 float Pclose;
 int pasamos;
@@ -403,8 +403,11 @@ int main(void)
                                                 pasamos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -412,7 +415,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -474,8 +477,11 @@ int main(void)
                                                 vemos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -483,7 +489,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -538,8 +544,11 @@ int main(void)
                                                 vemos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -547,7 +556,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -603,8 +612,11 @@ int main(void)
                                                 pasamos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -612,7 +624,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -699,8 +711,11 @@ int main(void)
                                                 vemos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -708,7 +723,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -763,8 +778,11 @@ int main(void)
                                                 pasamos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -772,7 +790,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -838,8 +856,11 @@ int main(void)
                                                 pasamos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
+                                                
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -847,7 +868,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
@@ -907,8 +928,11 @@ int main(void)
                                                 vemos++;
                                                 Popen = (double)pasamos*1.0/vemos*1.0;
                                                 Pclose = 1 - Popen;
-                                                H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
-                                                printf("H: %lf \n", H);
+
+                                                if (Popen > 0 && Pclose > 0)
+                                                {
+                                                    H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                }
 
                                                 if (H >= MEMORIA)
                                                 {
@@ -916,7 +940,7 @@ int main(void)
                                                     H_total[vecesborramos][1] = contador;
                                                     vecesborramos++;
                                                     entropiaFINALFINAL += H * log(2);
-                                                    printf("H: %lf \n", H);
+                                                    
                                                     H = 0.0;
                                                     vemos = 0;
                                                     pasamos = 0;
