@@ -35,17 +35,17 @@
 
 #define part_hot 60            //Número de partículas calientes.
 #define part_cold 60           //Número de partículas frías.
-#define T_TOTAL 10000             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define T_TOTAL 300             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
 #define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
-#define MEMORIA 2
+#define MEMORIA 1
 #define A   0.6931471806                 //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
 //ln(2) = 0.6931471806 
 #define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
 
-#define tope 150
+#define tope 15000
 
 
 
