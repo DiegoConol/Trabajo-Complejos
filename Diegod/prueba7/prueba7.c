@@ -35,14 +35,14 @@
 
 #define part_hot 100            //Número de partículas calientes.
 #define part_cold 100           //Número de partículas frías.
-#define T_TOTAL 500             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+#define T_TOTAL 300             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
 #define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
 #define MEMORIA 100
-#define A 0.5                   //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total.
-
+#define A   0.6931471806                 //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
+//ln(2) = 0.6931471806 
 #define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
 
 
@@ -942,9 +942,9 @@ int main(void)
             {
                 for(int j=0; j<div_M; j++)
                 {
-                    fprintf(densidad_file_media, "%lf", densidad_total_media[i][j]/5.0);
-                    fprintf(presion_cold_file_media, "%lf", pl_media[i][j]/5.0);
-                    fprintf(presion_hot_file_media, "%lf", pr_media[i][j]/5.0);
+                    fprintf(densidad_file_media, "%lf", densidad_total_media[i][j]/(MEDIA*1.0));
+                    fprintf(presion_cold_file_media, "%lf", pl_media[i][j]/(MEDIA*1.0));
+                    fprintf(presion_hot_file_media, "%lf", pr_media[i][j]/(MEDIA*1.0));
                     if(j<div_M-1)
                     {
                         fprintf(densidad_file_media, "\t");
@@ -999,9 +999,11 @@ int main(void)
                 //Lo paso todo a float multiplicando por 1.0
                 omega = tgamma(num_sub*1.0+1.0)/(tgamma(densidad_cold[i][j]*1.0+1.0)*tgamma(densidad_hot[i][j]*1.0+1.0)*tgamma(num_holes*1.0+1.0));
                 entropy_sub[i][j]=log(omega); //FALTARÍA MULTIPLICARLO POR KB, PERO ¿QUÉ UNIDADES TIENE?
+                entropy_sub_media[i][j]+=entropy_sub[i][j];
                 entropy_total+=entropy_sub[i][j];
             }
         }
+        entropy_total_media+=entropy_total;
     
         //Con la entropía calculada la printeo
 
@@ -1024,6 +1026,38 @@ int main(void)
         //Printeo también la total
         fprintf(entropy_total_file, "%lf", entropy_total);
         fprintf(entropy_total_file, "\n");
+
+
+
+        //Guardo las entropías medias
+
+        if ((contador+1) % MEDIA == 0){
+
+            for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+
+                    fprintf(entropy_sub_media_file, "%lf", entropy_sub_media[i][j]/(MEDIA*1.0));
+                    if(j<div_M-1)
+                    {
+                        fprintf(entropy_sub_media_file, "\t");
+                    }
+                    entropy_sub_media[i][j]=0.0;
+                }
+                fprintf(entropy_sub_media_file, "\n");
+            }
+            fprintf(entropy_sub_media_file, "\n");
+            fprintf(entropy_total_media_file, "%lf", entropy_total_media/(MEDIA*1.0));
+            fprintf(entropy_total_media_file, "\n");
+
+        }
+
+
+
+
+
+
 
 
         //Ahora con el demonio, igualo la entropía total a esta.
