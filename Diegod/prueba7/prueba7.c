@@ -24,7 +24,6 @@
 //
 // Se moverán primero por fila y luego por columna.
 // Se comprobará en cada iteración si hay una partícula alrededor, porque no pueden ocupar 2 el mismo hueco
-// 
 
 
 
