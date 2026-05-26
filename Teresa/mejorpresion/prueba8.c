@@ -1,4 +1,4 @@
-//VAMOS A ESCRIBIR LA PRESIÓN MEDIDADA.
+//CALCULAMOS LA PRESIÓN EN EL MURO DE ENMEDIO
 
 #include <stdio.h>
 #include <string.h>
@@ -33,19 +33,19 @@
 #define div_N 1                 //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
 #define div_M 2                 //Dimension de la sección en columna.
 
-#define part_hot 25            //Número de partículas calientes.
-#define part_cold 25           //Número de partículas frías.
+#define part_hot 25           //Número de partículas calientes.
+#define part_cold 50           //Número de partículas frías.
 #define T_TOTAL 1000             //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
 
 #define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
-#define MEMORIA 2
+#define MEMORIA 4
 #define A   0.6931471806                 //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
 //ln(2) = 0.6931471806 
 #define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
 
-#define tope 150
+#define tope 1000
 
 
 
@@ -64,9 +64,6 @@ int actua_demonio_hot = 0;      //Veces que actúa el demonio en partículas cal
 int valor_demonio = 0;          //¿Ha actuado en esa iteración el demonio?
 int vecesmemoria = 0;           //Indica cuantas veces ha gastado su memoria el demonio en un paso temporal.
 
-int pl[div_N][div_M][4]; // Matriz que guarda la presión en cada celda. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cada vez que una partícula se quiere mover en esa dirección y no puede, se suma 1 a esa posición
-int pr[div_N][div_M][4]; // Igual que antes, Pl indica lento, partículas frías. Pr indica rápido, partículas calientes.
-
 int memory[1][2];
 float hamiltoniano[2][T_TOTAL];
 
@@ -81,8 +78,11 @@ float new_total_entropy;
 float entropiaFINALFINAL = 0.0;
 
 
+//Arrays para la presión.
 
-
+int pl[div_N][div_M][4]; // Matriz que guarda la presión en cada celda. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cada vez que una partícula se quiere mover en esa dirección y no puede, se suma 1 a esa posición
+int pr[div_N][div_M][4]; // Igual que antes, Pl indica lento, partículas frías. Pr indica rápido, partículas calientes.
+int presion_mitad [2]; //Mide la presión que hay en el muro de en medio. Tiene izquierda a derecha [0] y de derecha a izquierda [1].
 
 //Identificación del sub-bloque de matriz en el que está una partícula.
 
@@ -216,6 +216,7 @@ int main(void)
     FILE *presion_hot_file = fopen("presionR.txt", "w");
     FILE *memoria_file = fopen("memoria.txt", "w");
     FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
+    FILE *presion_mitad_file = fopen("presion_mitad.txt", "w"); //Mide la presión en el muro de enmedio.
 
 
 
@@ -237,7 +238,7 @@ int main(void)
 
 
 
-    if (matriz_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria_file==NULL || hamiltoniano_file==NULL || entropy_sub_file== NULL || entropy_total_file== NULL || entropy_demon_file==NULL) {
+    if (matriz_file == NULL || presion_mitad_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria_file==NULL || hamiltoniano_file==NULL || entropy_sub_file== NULL || entropy_total_file== NULL || entropy_demon_file==NULL) {
         printf ("Error al abrir el archivo JAJAJA. \n");
         return 1;
     }
@@ -297,10 +298,6 @@ int main(void)
 
     //HAGO EL BUCLE GRANDE. NO PARARÁ HASTA QUE TERMINE T_TOTAL
     int contador=0;
-    
-    int contadoresss = 0; 
-    double contorespalamedia = 0.0;
-
 
 
 
@@ -1175,6 +1172,11 @@ int main(void)
         
         fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
 
+        // Calculo la presión que hay en el medio de todo.
+        presion_mitad[0] = pl[0][0][1] + pr[0][0][1];
+        presion_mitad[1] = pl[0][1][3] + pr[0][1][3];
+        fprintf(presion_mitad_file, "%d %d \n", presion_mitad[0], presion_mitad[1]);
+
          
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1264,10 +1266,6 @@ int main(void)
 
 
 
-
-
-
-
         //Ahora con el demonio, igualo la entropía total a esta.
         //Para saber cuántas veces ha actuado el demonio y se ha llenado la memoria, uso la variable auxiliar VECESMEMORIA
         //Si por ejemplo en un paso total el demonio ha actuado 42 veces y tiene de memoria 20, pues VECESMEMORIA será 2
@@ -1277,23 +1275,14 @@ int main(void)
         new_total_entropy = entropy_total + entropiaFINALFINAL;
         fprintf(entropy_demon_file, "%lf", new_total_entropy);
         fprintf(entropy_demon_file, "\n");
-        if (contador == 0 || contador == T_TOTAL -1)
-        {
-            printf("entropia %lf", new_total_entropy);
-            printf("\n");
-            if (contadoresss == 0){
-                    contorespalamedia += new_total_entropy;
-            }
-            else{
-                contorespalamedia -= new_total_entropy;  
-            }
-            contadoresss++ ;
-        }
 
 
         contador++;
         //Termina el bucle total de movimiento.
     }
+
+
+
     for (int i=0; i<vecesborramos; i++)
     {
         fprintf(memoria_file, "%lf %lf\n", H_total[i][0], H_total[i][1]);
@@ -1308,7 +1297,6 @@ int main(void)
     fprintf(entropy_demon_file, "%lf", new_total_entropy);
     fprintf(entropy_demon_file, "\n");
 
-    printf("entropia %lf \n", contorespalamedia);
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
