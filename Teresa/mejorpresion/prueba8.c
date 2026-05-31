@@ -198,7 +198,7 @@ int main(void)
 {
 
     // Voy a repetir el proceso bastantes veces para hacer una media estocástica
-    int repeticiones = 10;
+    int repeticiones = 20;
     int presiones_repeL[T_TOTAL][repeticiones];   // Esta matriz guardará la presión en cada paso temporal y en cada repetición. La primera mitad de columnas será la presión de de la izquierda y la segunda de la derecha
     int presiones_repeR[T_TOTAL][repeticiones];
     double presion_total [T_TOTAL][2]; // Esta matriz guardará la presión media en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda.
@@ -275,22 +275,10 @@ int main(void)
         //Escojo una posición al azar, si hay un 0, pues que ponga una partícula, sino, que lo intente otra vez.
 
         //Para los números aleatorios, pongo la semilla en null
-        // Semilla fija para que la condición inicial sea SIEMPRE la misma
+        srand(time(NULL));
 
-
-// ################################################################################################################################################################################################################################################################################################################################        
-                    // Aleatoriedad de las condiciones iniciales
-// ################################################################################################################################################################################################################################################################################################################################               srand(1234);
-
-        // Inicializo siempre con la misma condición inicial
+        //Inicializo la matriz llamando a la función
         inicializar(matriz, pl, pr, entropy_sub_media);
-
-        // Semilla distinta para que la evolución temporal sí sea distinta en cada repetición
-        srand(5678 + r);
-
-// ################################################################################################################################################################################################################################################################################################################################        
-
-// ################################################################################################################################################################################################################################################################################################################################
 
         memory[0][0] = 0; //Inicializo la memoria a 0
         memory[0][1] = 0; //Inicializo la memoria a 0
@@ -1215,8 +1203,8 @@ int main(void)
             presion_mitad[0] = pl[0][0][1] + pr[0][0][1];
             presion_mitad[1] = pl[0][1][3] + pr[0][1][3];
 
-            presiones_mitad[contador][0] = presion_mitad[0];
-            presiones_mitad[contador][1] = presion_mitad[1];
+            presiones_repeL[contador][0] = presion_mitad[0];
+            presiones_repeR[contador][1] = presion_mitad[1];
 
             fprintf(presion_mitad_file, "%d %d \n", presion_mitad[0], presion_mitad[1]);
 
@@ -1385,8 +1373,6 @@ int main(void)
 
         for (int i=0; i<T_TOTAL; i++)
         {   //esto no está bien, hay que hacerlo bien
-            presiones_repeL[i][r] = presiones_mitad[i][0];
-            presiones_repeR[i][r] = presiones_mitad[i][1];
             presion_total[i][0] += presiones_repeL[i][r]/(repeticiones*1.0);
             presion_total[i][1] += presiones_repeR[i][r]/(repeticiones*1.0); 
         }
