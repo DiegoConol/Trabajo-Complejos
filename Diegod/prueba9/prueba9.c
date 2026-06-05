@@ -44,7 +44,7 @@
 #define A   0.6931471806        //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
 //ln(2) = 0.6931471806 
 #define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
-#define repeticiones 50        //Número de veces que se repetirán las simulaciones.
+#define repeticiones 20        //Número de veces que se repetirán las simulaciones. MÁXIMO 60
 
 #define tope 1000
 
@@ -77,6 +77,10 @@ int vemos;
 int vecesborramos = 0;
 float new_total_entropy;
 float entropiaFINALFINAL = 0.0;
+double varianza_p = 0.0;    //Varianza de la presion
+double varianza_d =0.0;     //Varianza de la densidad
+double varianza_e =0.0;     //De la entropía del sistema
+double varianza_ed =0.0;    //De la entropía con el demonio
 
 
 //Arrays para la presión.
@@ -120,17 +124,44 @@ float entropy_total_media;              //Entropía total media
 
 int presiones_repeL[T_TOTAL][repeticiones];     // Esta matriz guardará la presión en cada paso temporal y en cada repetición. La primera mitad de columnas será la presión de de la izquierda y la segunda de la derecha
 int presiones_repeR[T_TOTAL][repeticiones];     // De la derecha
-double presion_total [T_TOTAL][2];              // Esta matriz guardará la presión media en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda.
+double presion_total [T_TOTAL][2];              // Esta matriz guardará la presión media en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda. Luego se divide en repeticiones
 int presiones_mitad[T_TOTAL][2];                // Esta matriz guardará la presión en el muro de enmedio en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda.
+
 
 int densidad_L_esto[T_TOTAL][repeticiones][2];  //Matriz que guarda el número de partículas: si son frías o calientes , en qué tiempo y en qué simulacion.
 int densidad_R_esto[T_TOTAL][repeticiones][2];
 double densidad_total_esto[T_TOTAL][2];         //Ahora el [2] indica el lado. 0 es izquierda y 1 es derecha.
 
+
 float entropy_esto[T_TOTAL];                    //Valor de entropía del sistema para cada t (es auxiliar)
 float entropy_demon_esto [T_TOTAL];             //Valor de entropía + calor del demonio para cada t (es auxiliar)
 float total_entropy_esto[T_TOTAL];              //Este y el siguiente son para el bucle de repeticiones, cuando termine el bucle de t_total, sumaremos cada entropy_esto y entropy_demon_esto
 float total_entropy_demon_esto[T_TOTAL];
+
+float presion_suma[T_TOTAL][2];
+float presion_media[T_TOTAL][2];                //Media para calcular los errores
+float presion_cuad[T_TOTAL][2];                 //Para la variable sigma.
+float sigma_presion[T_TOTAL][2];                //Para la variable error.
+float error_presion[T_TOTAL][2];
+
+float densidad_suma[T_TOTAL][2];
+float densidad_media[T_TOTAL][2];
+float densidad_cuad[T_TOTAL][2];                //Para la variable sigma. Es el cuadrado de la densidad.
+float sigma_densidad[T_TOTAL][2];               //Para la variable error
+float error_densidad[T_TOTAL][2];
+
+
+float entropy_suma[T_TOTAL];
+float entropy_media[T_TOTAL];
+float entropy_cuad[T_TOTAL];
+float sigma_entropy[T_TOTAL];
+float error_entropy[T_TOTAL];
+
+float entropy_demon_suma[T_TOTAL];
+float entropy_demon_media[T_TOTAL];
+float entropy_demon_cuad[T_TOTAL];
+float sigma_entropy_demon[T_TOTAL];
+float error_entropy_demon[T_TOTAL];
 
 
 
@@ -247,6 +278,20 @@ int main(void)
     FILE *AverageEntropy_file = fopen("Ave_Entropy.txt", "w");
     FILE *Average_DemonEntropy_file = fopen("Ave_Demon_and_Entropy.txt", "w");
 
+    //Para los errores y las sigmas
+
+    FILE *error_presion_file = fopen("Error_Presion.txt", "w");
+    FILE *sigma_presion_file = fopen("Sigma_Presion.txt", "w");
+    FILE *error_densidad_file = fopen("Error_Densidad.txt", "w");
+    FILE *sigma_densidad_file = fopen("Sigma_Densidad.txt", "w");
+    FILE *error_entropy_file = fopen("Error_Entropia.txt", "w");
+    FILE *sigma_entropy_file = fopen("Sigma_Entropia.txt", "w");
+    FILE *error_entropy_demon_file = fopen("Error_Entropia_Demonio.txt", "w");
+    FILE *sigma_entropy_demon_file = fopen("Sigma_Entropia_Demonio.txt", "w");
+
+
+
+
 
     //Compruebo que todos los archivos se abran.
 
@@ -265,17 +310,47 @@ int main(void)
         return 1;
     }
 
+    //Inicializo las variables estocásticas a 0.0
     for (int i = 0; i < T_TOTAL; i++)
     {
 
-        presion_total[i][0] = 0.0;
-        presion_total[i][1] = 0.0;
+        for(int j=0; j<2; j++)
+        {
+            presion_total[i][j] = 0.0;
 
-        densidad_total_esto[i][0] = 0.0;
-        densidad_total_esto[i][1] = 0.0;
+            presion_suma[i][j]=0.0;
+            presion_cuad[i][j]=0.0;
+            presion_media[i][j]=0.0;
+            sigma_presion[i][j]=0.0;
+            error_presion[i][j]=0.0;
 
-        total_entropy_esto[i] = 0.0;
-        total_entropy_demon_esto[i] = 0.0;
+            densidad_suma[i][j]=0.0;
+            densidad_total_esto[i][j] = 0.0;
+            densidad_media[i][j] = 0.0;
+            densidad_cuad[i][j] = 0.0;
+            sigma_densidad[i][j] = 0.0;
+            error_densidad[i][j] = 0.0;
+
+            total_entropy_esto[i] = 0.0;
+            entropy_suma[i] = 0.0;
+            entropy_media[i] = 0.0;
+            entropy_cuad[i] = 0.0;
+            sigma_entropy[i] = 0.0;
+            error_entropy[i] = 0.0;
+
+            total_entropy_demon_esto[i] = 0.0;
+            entropy_demon_suma[i]=0.0;
+            entropy_demon_media[i] = 0.0;
+            entropy_demon_cuad[i] = 0.0;
+            sigma_entropy_demon[i] = 0.0;
+            error_entropy_demon[i] = 0.0;
+        }
+        
+        
+        
+
+
+
 
     }
 
@@ -333,6 +408,8 @@ int main(void)
         entropy_total=0.0;
         vecesmemoria=0;
         entropiaFINALFINAL=0.0;
+        vemos=0;
+        pasamos=0;
 
 
 
@@ -1224,6 +1301,15 @@ int main(void)
             fprintf(presion_mitad_file, "%d %d \n", presion_mitad[0], presion_mitad[1]);
 
 
+            //Pongo las presiones estocásticas:
+
+            presion_suma[contador][0] +=presion_mitad[0];
+            presion_suma[contador][1] +=presion_mitad[1];
+
+            presion_cuad[contador][0] += presion_mitad[0]*presion_mitad[0];
+            presion_cuad[contador][1] += presion_mitad[1]*presion_mitad[1];
+
+
             //Pongo las densidades bien para que se guarden estocásticamente
 
             densidad_L_esto[contador][r][0] = densidad_cold[0][0];
@@ -1231,6 +1317,10 @@ int main(void)
             densidad_R_esto[contador][r][0] = densidad_cold[0][1];
             densidad_R_esto[contador][r][1] = densidad_hot[0][1];
 
+            densidad_suma[contador][0] += densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1];
+            densidad_suma[contador][1] += densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1];
+            densidad_cuad[contador][0] += (densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1])*(densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1]);
+            densidad_cuad[contador][1] += (densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1])*(densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1]);
 
 
 
@@ -1344,6 +1434,20 @@ int main(void)
             entropy_esto[contador] = entropy_total;
             entropy_demon_esto[contador] = new_total_entropy;
 
+            entropy_suma[contador] += entropy_total;
+            entropy_cuad[contador] += entropy_total*entropy_total;
+
+            entropy_demon_suma[contador] += new_total_entropy;
+            entropy_demon_cuad[contador] += new_total_entropy*new_total_entropy;
+
+
+
+
+
+
+
+
+
             contador++;
             //Termina el bucle total de movimiento.
         }
@@ -1399,8 +1503,10 @@ int main(void)
 
     }
 
-    //Guardo finalmente las variables estocásticas en sus archivos
 
+    //Guardo finalmente las variables estocásticas en sus archivos
+    //PENDIENTE DE BORRADO
+    /*
     for (int i=0; i<T_TOTAL; i++)
     {
         fprintf(AveragePresion_file, "%lf %lf \n", presion_total[i][0], presion_total[i][1]);
@@ -1408,6 +1514,104 @@ int main(void)
         fprintf(AverageEntropy_file, "%lf \n", total_entropy_esto[i]);
         fprintf(Average_DemonEntropy_file, "%lf \n", total_entropy_demon_esto[i]);
     }
+    */
+    //Guardo ahora las variables de los errores y hago los cálculos:
+
+    for(int i=0; i < T_TOTAL; i++)
+    {
+        for(int j=0; j<2; j++)
+        {
+            presion_media[i][j] = presion_suma[i][j] / (repeticiones *1.0);
+            densidad_media[i][j] = densidad_suma[i][j] /(repeticiones*1.0);
+
+            //Ahora si hay más de una simulación tendré que hacer la varianza y demás.
+            if (repeticiones>1)
+            {
+
+                varianza_p = (presion_cuad[i][j]-repeticiones*presion_media[i][j]*presion_media[i][j])/(repeticiones*1.0-1.0); //Recuerdo que se divide por N-1
+                varianza_d = (densidad_cuad[i][j] - repeticiones*densidad_media[i][j]*densidad_media[i][j])/(repeticiones*1.0-1.0);
+            
+                //Por si acaso
+                if(varianza_p<0.0) { varianza_p=0.0;}
+                if(varianza_d < 0.0) {varianza_d=0.0;}
+
+                sigma_presion[i][j] = sqrt(varianza_p);
+                error_presion[i][j] = sigma_presion[i][j]/(sqrt(repeticiones*1.0));
+
+                sigma_densidad[i][j] = sqrt(varianza_d);
+                error_densidad[i][j] = sigma_densidad[i][j]/(sqrt(repeticiones*1.0));
+            }
+            else
+            {
+                sigma_presion[i][j]=0.0;
+                error_presion[i][j]=0.0;
+                sigma_densidad[i][j]=0.0;
+                error_densidad[i][j]=0.0;
+            }
+
+        }
+
+
+        //Ahora la entropía
+        entropy_media[i] = entropy_suma[i]/(repeticiones*1.0);
+        entropy_demon_media[i] = entropy_demon_suma[i]/(repeticiones*1.0);
+
+        if (repeticiones >1)
+        {
+            varianza_e = (entropy_cuad[i] - repeticiones*entropy_media[i]*entropy_media[i])/(repeticiones*1.0-1.0);
+            varianza_ed = (entropy_demon_cuad[i] - repeticiones*entropy_demon_media[i]*entropy_demon_media[i])/(repeticiones*1.0-1.0);
+
+            if(varianza_e <0.0) { varianza_e =0.0;}
+            if(varianza_ed < 0.0) { varianza_ed =0.0;}
+
+            sigma_entropy[i] = sqrt(varianza_e);
+            error_entropy[i] = sigma_entropy[i] / sqrt(repeticiones*1.0);
+
+            sigma_entropy_demon[i] = sqrt(varianza_ed);
+            error_entropy_demon[i] = sigma_entropy_demon[i] / sqrt(repeticiones*1.0);
+        }
+        else
+        {
+            sigma_entropy[i] = 0.0;
+            error_entropy[i] = 0.0;
+            sigma_entropy_demon[i] = 0.0;
+            error_entropy_demon[i] = 0.0;
+        }
+        
+        
+    }
+
+    //Guardo finalmente todas las variables estocásticas y los errores.
+
+    for(int i=0; i<T_TOTAL; i++)
+    {
+        //Presion
+        fprintf(AveragePresion_file, "%lf %lf \n", presion_media[i][0], presion_media[i][1]);
+        fprintf(sigma_presion_file, "%lf %lf \n", sigma_presion[i][0], sigma_presion[i][1]);
+        fprintf(error_presion_file, "%lf %lf \n", error_presion[i][0], error_presion[i][1]);
+
+        //Densidad
+        fprintf(AverageDensity_file, "%lf %lf \n", densidad_media[i][0], densidad_media[i][1]);
+        fprintf(sigma_densidad_file, "%lf %lf \n", sigma_densidad[i][0], sigma_densidad[i][1]);
+        fprintf(error_densidad_file, "%lf %lf \n", error_densidad[i][0], error_densidad[i][1]);
+
+        //Entropía normal
+        fprintf(AverageEntropy_file, "%lf \n", entropy_media[i]);
+        fprintf(error_entropy_file, "%lf \n", error_entropy[i]);
+        fprintf(sigma_entropy_file, "%lf \n", sigma_entropy[i]);
+
+        //Entropía del demonio
+        fprintf(Average_DemonEntropy_file, "%lf \n", entropy_demon_media[i]);
+        fprintf(error_entropy_demon_file, "%lf \n", error_entropy_demon[i]);
+        fprintf(sigma_entropy_demon_file, "%lf \n", sigma_entropy_demon[i]);
+
+
+
+    }
+
+
+
+
 
     fclose(matriz_file);
     fclose(demonio_file);
@@ -1434,6 +1638,13 @@ int main(void)
     fclose(AverageDensity_file);
     fclose(AverageEntropy_file);
     fclose(Average_DemonEntropy_file);
+
+    fclose(error_presion_file);
+    fclose(sigma_presion_file);
+    fclose(error_densidad_file);
+    fclose(sigma_densidad_file);
+    fclose(error_entropy_file);
+    fclose(sigma_entropy_file);
 
 
     printf("Lo he hecho todo bien :)");
