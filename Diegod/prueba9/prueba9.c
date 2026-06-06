@@ -40,13 +40,13 @@
 #define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
 #define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
 
-#define MEMORIA 4
+#define MEMORIA 10
 #define A   0.6931471806        //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
 //ln(2) = 0.6931471806 
 #define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
-#define repeticiones 20        //Número de veces que se repetirán las simulaciones. MÁXIMO 60
+#define repeticiones 50        //Número de veces que se repetirán las simulaciones. MÁXIMO 60
 
-#define tope 1000
+#define tope 10000
 
 
 
@@ -1528,6 +1528,7 @@ int main(void)
         printf("He completado la simulación: ");
         printf("%d", r);
         printf("\n");
+        fflush(stdout);
 
 
     }
