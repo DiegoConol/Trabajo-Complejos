@@ -79,6 +79,7 @@ float new_total_entropy;
 float entropiaFINALFINAL = 0.0;
 double varianza_p = 0.0;    //Varianza de la presion
 double varianza_d =0.0;     //Varianza de la densidad
+double varianza_dt=0.0;     //De la densidad de distintos tipos.
 double varianza_e =0.0;     //De la entropía del sistema
 double varianza_ed =0.0;    //De la entropía con el demonio
 
@@ -149,6 +150,14 @@ float densidad_media[T_TOTAL][2];
 float densidad_cuad[T_TOTAL][2];                //Para la variable sigma. Es el cuadrado de la densidad.
 float sigma_densidad[T_TOTAL][2];               //Para la variable error
 float error_densidad[T_TOTAL][2];
+
+//Para las densidades de frío y caliente
+
+float densidad_tipo_suma[T_TOTAL][4]; //0 frías izquierda, 1 calientes izquierda, 2 frías derecha, 3 calientes derecha
+float densidad_tipo_media[T_TOTAL][4];
+float densidad_tipo_cuad[T_TOTAL][4];
+float sigma_densidad_tipo[T_TOTAL][4];
+float error_densidad_tipo[T_TOTAL][4];
 
 
 float entropy_suma[T_TOTAL];
@@ -275,6 +284,7 @@ int main(void)
     // Voy a repetir el proceso bastantes veces para hacer una media estocástica
     FILE *AveragePresion_file = fopen("Ave_Presion.txt", "w");
     FILE *AverageDensity_file = fopen("Ave_Density.txt", "w");
+    FILE *AverageDensityTypes_file = fopen("Ave_Density_Types.txt", "w");
     FILE *AverageEntropy_file = fopen("Ave_Entropy.txt", "w");
     FILE *Average_DemonEntropy_file = fopen("Ave_Demon_and_Entropy.txt", "w");
 
@@ -284,6 +294,8 @@ int main(void)
     FILE *sigma_presion_file = fopen("Sigma_Presion.txt", "w");
     FILE *error_densidad_file = fopen("Error_Densidad.txt", "w");
     FILE *sigma_densidad_file = fopen("Sigma_Densidad.txt", "w");
+    FILE *error_densidad_tipo_file = fopen("Error_Densidad_Tipo.txt", "w");
+    FILE *sigma_densidad_tipo_file = fopen("Sigma_Densidad_Tipo.txt", "w");
     FILE *error_entropy_file = fopen("Error_Entropia.txt", "w");
     FILE *sigma_entropy_file = fopen("Sigma_Entropia.txt", "w");
     FILE *error_entropy_demon_file = fopen("Error_Entropia_Demonio.txt", "w");
@@ -330,22 +342,30 @@ int main(void)
             densidad_cuad[i][j] = 0.0;
             sigma_densidad[i][j] = 0.0;
             error_densidad[i][j] = 0.0;
+        }
 
-            total_entropy_esto[i] = 0.0;
-            entropy_suma[i] = 0.0;
-            entropy_media[i] = 0.0;
-            entropy_cuad[i] = 0.0;
-            sigma_entropy[i] = 0.0;
-            error_entropy[i] = 0.0;
-
-            total_entropy_demon_esto[i] = 0.0;
-            entropy_demon_suma[i]=0.0;
-            entropy_demon_media[i] = 0.0;
-            entropy_demon_cuad[i] = 0.0;
-            sigma_entropy_demon[i] = 0.0;
-            error_entropy_demon[i] = 0.0;
+        for(int j=0; j<4; j++)
+        {
+            densidad_tipo_suma[i][j]=0.0;
+            densidad_tipo_media[i][j] = 0.0;
+            densidad_tipo_cuad[i][j] = 0.0;
+            sigma_densidad_tipo[i][j] = 0.0;
+            error_densidad_tipo[i][j] = 0.0;
         }
         
+        total_entropy_esto[i] = 0.0;
+        entropy_suma[i] = 0.0;
+        entropy_media[i] = 0.0;
+        entropy_cuad[i] = 0.0;
+        sigma_entropy[i] = 0.0;
+        error_entropy[i] = 0.0;
+
+        total_entropy_demon_esto[i] = 0.0;
+        entropy_demon_suma[i]=0.0;
+        entropy_demon_media[i] = 0.0;
+        entropy_demon_cuad[i] = 0.0;
+        sigma_entropy_demon[i] = 0.0;
+        error_entropy_demon[i] = 0.0;
         
         
 
@@ -1322,6 +1342,15 @@ int main(void)
             densidad_cuad[contador][0] += (densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1])*(densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1]);
             densidad_cuad[contador][1] += (densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1])*(densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1]);
 
+            densidad_tipo_suma[contador][0] += densidad_L_esto[contador][r][0];
+            densidad_tipo_suma[contador][1] += densidad_L_esto[contador][r][1];
+            densidad_tipo_suma[contador][2] += densidad_R_esto[contador][r][0];
+            densidad_tipo_suma[contador][3] += densidad_R_esto[contador][r][1];
+
+            densidad_tipo_cuad[contador][0] += densidad_L_esto[contador][r][0]*densidad_L_esto[contador][r][0];
+            densidad_tipo_cuad[contador][1] += densidad_L_esto[contador][r][1]*densidad_L_esto[contador][r][1];
+            densidad_tipo_cuad[contador][2] += densidad_R_esto[contador][r][0]*densidad_R_esto[contador][r][0];
+            densidad_tipo_cuad[contador][3] += densidad_R_esto[contador][r][1]*densidad_R_esto[contador][r][1];
 
 
 
@@ -1551,6 +1580,28 @@ int main(void)
 
         }
 
+        for(int j=0; j<4; j++)
+        {
+
+            densidad_tipo_media[i][j] = densidad_tipo_suma[i][j]/(repeticiones*1.0);
+            if(repeticiones >1)
+            {
+                varianza_dt=(densidad_tipo_cuad[i][j]-repeticiones*densidad_tipo_media[i][j]*densidad_tipo_media[i][j])/(repeticiones*1.0-1.0);
+            
+                if(varianza_dt <0.0) {varianza_dt=0.0;}
+                sigma_densidad_tipo[i][j] = sqrt(varianza_dt);
+                error_densidad_tipo[i][j] = sigma_densidad_tipo[i][j]/sqrt(repeticiones*1.0);            
+            }
+            else
+            {
+                sigma_densidad_tipo[i][j]=0.0;
+                error_densidad_tipo[i][j]=0.0;
+            }
+        }
+
+
+
+
 
         //Ahora la entropía
         entropy_media[i] = entropy_suma[i]/(repeticiones*1.0);
@@ -1595,6 +1646,12 @@ int main(void)
         fprintf(sigma_densidad_file, "%lf %lf \n", sigma_densidad[i][0], sigma_densidad[i][1]);
         fprintf(error_densidad_file, "%lf %lf \n", error_densidad[i][0], error_densidad[i][1]);
 
+        //Densidad por tipos
+        fprintf(AverageDensityTypes_file, "%lf %lf %lf %lf \n", densidad_tipo_media[i][0], densidad_tipo_media[i][1], densidad_tipo_media[i][2], densidad_tipo_media[i][3]);
+        fprintf(sigma_densidad_tipo_file, "%lf %lf %lf %lf \n", sigma_densidad_tipo[i][0], sigma_densidad_tipo[i][1], sigma_densidad_tipo[i][2], sigma_densidad_tipo[i][3]);
+        fprintf(error_densidad_tipo_file, "%lf %lf %lf %lf \n", error_densidad_tipo[i][0], error_densidad_tipo[i][1], error_densidad_tipo[i][2], error_densidad_tipo[i][3]);
+
+
         //Entropía normal
         fprintf(AverageEntropy_file, "%lf \n", entropy_media[i]);
         fprintf(error_entropy_file, "%lf \n", error_entropy[i]);
@@ -1636,6 +1693,7 @@ int main(void)
 
     fclose(AveragePresion_file);
     fclose(AverageDensity_file);
+    fclose(AverageDensityTypes_file);
     fclose(AverageEntropy_file);
     fclose(Average_DemonEntropy_file);
 
@@ -1643,8 +1701,12 @@ int main(void)
     fclose(sigma_presion_file);
     fclose(error_densidad_file);
     fclose(sigma_densidad_file);
+    fclose(error_densidad_tipo_file);
+    fclose(sigma_densidad_tipo_file);
     fclose(error_entropy_file);
     fclose(sigma_entropy_file);
+    fclose(error_entropy_demon_file);
+    fclose(sigma_entropy_demon_file);
 
 
     printf("Lo he hecho todo bien :)");
