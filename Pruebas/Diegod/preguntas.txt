@@ -1,0 +1,58 @@
+PREGUNTAS PARA DANIEL MANZANO TUTORÍA 13-5-26
+
+########################################
+#### PROYECTO ##########################
+########################################
+
+
+
+1.- Para modelar la densidad, ¿tengo que tener en cuenta que las partículas calientes "aportan menos", o con asumir que es una propiedad macroscópica y su espacio es finito, las tratamos todas iguales?
+PARA LA DENSIDAD NO ES NECESARIO DISTINGUIR
+- Está bien modelada la probabilidad de movimiento de una partícula? Tiene que ser equiprobable saltar, no? Incluso si no puede, va ciclando, que no es exactamente equiprobable, pero es para no entrar en if hell.
+
+
+2.- Para modelar la temperatura, se nos ha ocurrido poner que sea una constante por 1-p con p la probabilidad de moverse del tipo de partícula.
+Las frías tienen una p mayor que las calientes, por lo que aportan mucho menos. ¿Está bien modelado?
+
+
+
+3.- Para la presión ahora sí uso la densidad de frías y calientes. Ahora bien, si le he aplicado un factor 'A' a la temperatura, ¿qué factor debo aplicarle a la presión? 
+Para la presión veo mejor que en lugar de tomar los rebotes, que cuente las partículas.
+
+
+
+4.- Estamos un poco perdidos para tema demonio. ¿Memoria finita? Eso significa que mientras está durando la simulación se va llenando, se vacía, se va llenando, se vacía y así?
+De ser así, ¿Debe terminar siempre con memoria vacía, verdad?
+
+- Cuando se vacía, como yo quiero modelar la temperatura no se tiene en cuenta la memoria, ¿debería?
+Es que no le vemos el sentido a que si tiene memoria M, no venga esa dependencia en el calor que suelta.
+
+-La definición de p(s), en mi caso como la he definido, sería mejor poner (1-P_umbral), no?
+
+
+
+########################################
+#### TEORÍA ############################
+########################################
+
+
+1.- El coeficiente de lyapunov puede saturar? Me refiero, en compu en el péndulo doble si ponía el tiempo suficientemente largo saturaba.
+Le encuentro sentido porque existe una cota máxima para cada diferencia de coordenadas (antípodas). Como es un valor finito y se toman siempre las misma
+cantidad de medidas, es como un techo que no se debe alcanzar nunca.
+
+2.- Los deberes son el pdf que mandó, o hay alguno más? Recuerdo que había algo más pero recuerdo ya si lo hice en su momento o qué. Si hay más, podría poner un aviso en prado?
+
+3.- Del de las ecuaciones, el primero. El apartado c nos pide la condición para que sea una espiral estable o un nodo estable.
+Lo primero, ¿Stable spiral es un sink spiral verdad? 
+SÍ
+Lo segundo, ¿le vale con la condición de dentro de la raíz? ¿O necesita que haga el desarrollo de que la traza tiene que ser mayor que lo de dentro y demás?
+QUIERE TAMBIÉN LA CONDICION DE QUE SEA REAL NEGATIVO.
+Lo último ¿hay alguna condición para el determinante? ¿Debe ser positivo siempre? 
+DEBERÍA SER POSITIVO SI (BUSCALO TU TAMBIÉN)
+
+4.- Para el Fractal dimension de sierpinski carpet. ¿Divimos el cuadrado en 9 y quitamos el central, o lo dividimos en 16 y quitamos los 4 de en medio?
+EN 16
+
+
+5.- Podrías subir los apuntes de schotascic process?
+

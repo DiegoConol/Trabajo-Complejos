@@ -1,0 +1,1719 @@
+//VAMOS A HACER LAS VARIABLES ESTOCÁSTICAS
+
+#include <stdio.h>
+#include <string.h>
+#include <time.h> //Para la semilla aleatoria
+#include <math.h> //Necesario para la potencia
+#include <stdlib.h> //Para el uso de rand() y srand()
+
+// PLANTEAMIENTO //////////////////////
+// 
+// Voy a crear una matriz nxm, primero la inicializaré y tendrá los valores: 0,1,2.
+// 0 = no hay partícula
+// 1 = hay una partícula fría
+// 2 = hay una partícula caliente
+
+// Si la partícula es fría tendrá menor probabilidad de moverse.
+// Crearé también una distribución de probabilidad para que sea solo cambiar eso
+// La matriz tendrá varias divisiones, no vamos a poner n o m primo. Por ejemplo si n=9 pues que tenga 3 divisiones y si m=6 pues 2 divisiones. 
+// Será en la frontera de estas divisiones que el demonio actúe.
+// Si una partícula quiere pasar desde el extremo de una, al borde de otra tendrá que recibir el permiso del demonio.
+// Cada vez que el demonio haga una acción, aumentará la entropía.
+
+// CÓMO SE MUEVEN LAS PARTÍCULAS /////////////////
+//
+// Se moverán primero por fila y luego por columna.
+// Se comprobará en cada iteración si hay una partícula alrededor, porque no pueden ocupar 2 el mismo hueco
+// 
+
+
+
+#define N 10                    //Numero de filas.
+#define M 20                    //Numero de columnas.
+#define div_N 1                 //Dimension de la sección en fila. Por favor, pon divisores del número de filas y columnas.
+#define div_M 2                 //Dimension de la sección en columna.
+
+#define part_hot 25             //Número de partículas calientes.
+#define part_cold 25            //Número de partículas frías.
+#define T_TOTAL 1000            //Número total de posibilidad de pasos. Es decir. Numero de iteraciones en las que la matriz ha podido modificarse.
+
+#define umbral_cold 0.5         //Número entre 0 y 1 que tiene que superar la probabilidad para que se mueva la partícula fría.
+#define umbral_hot 0.1          //Lo mismo pero para la caliente. SIEMPRE umbral_hot < umbral_cold
+
+#define MEMORIA 10
+#define A   0.6931471806        //Número que representa el 1/T de la entropía del demonio. Se usa al sumar el calor del demonio a la entropía total. ES LN(2)
+//ln(2) = 0.6931471806 
+#define MEDIA 5                 //Cada cuantos pasos quieres que se promedie
+#define repeticiones 50        //Número de veces que se repetirán las simulaciones. MÁXIMO 60
+
+#define tope 10000
+
+
+
+
+int matriz[N][M];               //Matriz principal. Es nuestra cuadrícula.
+int matriz_auxiliar[N][M];      //Matriz en la que se harán cambios. Esto es para no modificar y trabajar en la misma matriz.
+int semueve=0;                  //Variable que indicará dirección de movimiento. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cicla en +4, por lo que 4 es arriba, 5 derecha, 6 abajo y 7 izquierda.
+int puedemoverse=0;             //Variable que indica la posibilidad de movimiento. ¿Hay celdas contiguas libres? 0 indica que no puede moverse, 1 indica que sí puede moverse.
+int contador_movimientos = 0;   //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
+double prob_movimiento=0.0;     //Variable que tendrá que superar el umbral para moverse.
+int divisor_columna = M/div_M;
+//int divisor_fila = N/div_N;     //Estas variables ponen la columna o fila que deben atravesar en multiplos enteros. Osea si divisior_M es divisor entero de M, en esa columna (a su derecha) hay una división.
+int divisor_fila = N+5;
+int actua_demonio_cold = 0;     //Veces que actúa el demonio en partículas frías
+int actua_demonio_hot = 0;      //Veces que actúa el demonio en partículas calientes      
+int valor_demonio = 0;          //¿Ha actuado en esa iteración el demonio?
+int vecesmemoria = 0;           //Indica cuantas veces ha gastado su memoria el demonio en un paso temporal.
+
+int memory[1][2];       // Esto no lo usamos al final
+float hamiltoniano[2][T_TOTAL];     // Esto no lo usamos al final
+
+float H;
+float H_total[tope][2];
+float Popen;
+float Pclose;
+int pasamos;
+int vemos;
+int vecesborramos = 0;
+float new_total_entropy;
+float entropiaFINALFINAL = 0.0;
+double varianza_p = 0.0;    //Varianza de la presion
+double varianza_d =0.0;     //Varianza de la densidad
+double varianza_dt=0.0;     //De la densidad de distintos tipos.
+double varianza_e =0.0;     //De la entropía del sistema
+double varianza_ed =0.0;    //De la entropía con el demonio
+
+
+//Arrays para la presión.
+
+int pl[div_N][div_M][4]; // Matriz que guarda la presión en cada celda. 0 arriba, 1 derecha, 2 abajo, 3 izquierda. Cada vez que una partícula se quiere mover en esa dirección y no puede, se suma 1 a esa posición
+int pr[div_N][div_M][4]; // Igual que antes, Pl indica lento, partículas frías. Pr indica rápido, partículas calientes.
+int presion_mitad [2]; //Mide la presión que hay en el muro de en medio. Tiene izquierda a derecha [0] y de derecha a izquierda [1].
+
+//Identificación del sub-bloque de matriz en el que está una partícula.
+
+int bloquefila = 0;         //identifica en qué fila de bloques está
+int bloquecolumna=0;        //Identifica en qué columna de bloques está.
+
+
+//Arrays para la densidad: cuenta cuántas partículas hay en cada subsección y las guarda.
+
+int densidad_cold[div_N][div_M];
+int densidad_hot[div_N][div_M];
+int densidad_total[div_N][div_M]; //Por si acaso.
+
+
+//Arrays para la entropía y su cálculo.
+
+int num_sub = N * M/div_M;    //Dice las celdas totales que tiene cada subseccion
+int num_holes = 0;                  //Variable auxiliar para hacer que numero_huecos = N_total - n_frias - n_calientes
+double omega;                       //Variable para calcular la entropía
+float entropy_sub[div_N][div_M];    //Entropía en cada subsección
+float entropy_total;                //Entropía total del sistema
+float entropy_demon;                //Valor de entropía al que se le añade el valor que expulsa el demonio cuando se llena su memoria
+
+
+//MEDIAS
+
+float pl_media[div_N][div_M];    //Estas son las presiones y densidades medias.
+float pr_media[div_N][div_M];
+float densidad_total_media[div_N][div_M];
+float entropy_sub_media[div_N][div_M];  //Entropía media de cada celda
+float entropy_total_media;              //Entropía total media
+
+//ARRAYS ESTOCÁSTICOS
+
+int presiones_repeL[T_TOTAL][repeticiones];     // Esta matriz guardará la presión en cada paso temporal y en cada repetición. La primera mitad de columnas será la presión de de la izquierda y la segunda de la derecha
+int presiones_repeR[T_TOTAL][repeticiones];     // De la derecha
+double presion_total [T_TOTAL][2];              // Esta matriz guardará la presión media en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda. Luego se divide en repeticiones
+int presiones_mitad[T_TOTAL][2];                // Esta matriz guardará la presión en el muro de enmedio en cada paso temporal, tanto de izquierda a derecha como de derecha a izquierda. La primera columna es la presión de izquierda a derecha y la segunda de derecha a izquierda.
+
+
+int densidad_L_esto[T_TOTAL][repeticiones][2];  //Matriz que guarda el número de partículas: si son frías o calientes , en qué tiempo y en qué simulacion.
+int densidad_R_esto[T_TOTAL][repeticiones][2];
+double densidad_total_esto[T_TOTAL][2];         //Ahora el [2] indica el lado. 0 es izquierda y 1 es derecha.
+
+
+float entropy_esto[T_TOTAL];                    //Valor de entropía del sistema para cada t (es auxiliar)
+float entropy_demon_esto [T_TOTAL];             //Valor de entropía + calor del demonio para cada t (es auxiliar)
+float total_entropy_esto[T_TOTAL];              //Este y el siguiente son para el bucle de repeticiones, cuando termine el bucle de t_total, sumaremos cada entropy_esto y entropy_demon_esto
+float total_entropy_demon_esto[T_TOTAL];
+
+float presion_suma[T_TOTAL][2];
+float presion_media[T_TOTAL][2];                //Media para calcular los errores
+float presion_cuad[T_TOTAL][2];                 //Para la variable sigma.
+float sigma_presion[T_TOTAL][2];                //Para la variable error.
+float error_presion[T_TOTAL][2];
+
+float densidad_suma[T_TOTAL][2];
+float densidad_media[T_TOTAL][2];
+float densidad_cuad[T_TOTAL][2];                //Para la variable sigma. Es el cuadrado de la densidad.
+float sigma_densidad[T_TOTAL][2];               //Para la variable error
+float error_densidad[T_TOTAL][2];
+
+//Para las densidades de frío y caliente
+
+float densidad_tipo_suma[T_TOTAL][4]; //0 frías izquierda, 1 calientes izquierda, 2 frías derecha, 3 calientes derecha
+float densidad_tipo_media[T_TOTAL][4];
+float densidad_tipo_cuad[T_TOTAL][4];
+float sigma_densidad_tipo[T_TOTAL][4];
+float error_densidad_tipo[T_TOTAL][4];
+
+
+float entropy_suma[T_TOTAL];
+float entropy_media[T_TOTAL];
+float entropy_cuad[T_TOTAL];
+float sigma_entropy[T_TOTAL];
+float error_entropy[T_TOTAL];
+
+float entropy_demon_suma[T_TOTAL];
+float entropy_demon_media[T_TOTAL];
+float entropy_demon_cuad[T_TOTAL];
+float sigma_entropy_demon[T_TOTAL];
+float error_entropy_demon[T_TOTAL];
+
+
+
+//Función de inicializar la matriz.
+
+void inicializar(int matriz[N][M], int pl[div_N][div_M][4], int pr[div_N][div_M][4], float entropia_sub_media[div_N][div_M])
+{
+    
+    //Las inicializo a 0
+    for (int i=0; i<N; i++)
+    {
+        for(int j=0; j<M; j++)
+        {
+            matriz[i][j]=0;
+        }
+    }
+
+    //Pongo las frías:
+    int contador=0;
+
+    while (contador<part_cold)
+    {
+        int aux_fila = rand()%N;
+        int aux_col = rand()%M;
+
+        if (matriz[aux_fila][aux_col]==0)
+        {
+            matriz[aux_fila][aux_col]=1;
+            contador++;
+        }
+    }
+
+    //Pongo las calientes:
+    contador=0;
+    H = 0.0;
+
+    while (contador<part_hot)
+    {
+        int aux_fila = rand()%N;
+        int aux_col = rand()%M;
+
+        if (matriz[aux_fila][aux_col]==0)
+        {
+            matriz[aux_fila][aux_col]=2;
+            contador++;
+        }
+    }
+
+
+    for (int i=0; i<div_N; i++)
+    {
+        for(int j=0; j<div_M; j++)
+        {
+            for (int k=0; k<4; k++)
+            {
+                pl[i][j][k]=0.0;
+                pr[i][j][k]=0.0;
+                entropy_sub_media[i][j]=0.0;
+            }
+        }
+    }
+
+    for (int i=0; i<tope; i++)
+    {
+       H_total[i][0] = 0.0;
+       H_total[i][1] = 0.0;
+    }    
+
+    return;
+}
+
+    
+
+
+
+//Creo el programa entero
+
+int main(void)
+{
+
+    //Para los números aleatorios, pongo la semilla en null
+    srand(time(NULL));
+
+    //archivos básicos
+    FILE *matriz_file = fopen("MATRIZ.txt", "w");       //Fichero donde se guarda la matriz y sus pasos. El paso se diferencia por salto de línea vacío.
+    FILE *demonio_file = fopen("demonio.txt", "w");     //Fichero donde se se guarda la partícula sobre la que ha actuado el demonio. 0=no ha actuado, 1=sobre fría, 2=sobre caliente. El paso se diferencia por salto de línea vacío.
+    FILE *densidad_file = fopen("densidad.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+    FILE *presion_cold_file = fopen("presionL.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
+    FILE *presion_hot_file = fopen("presionR.txt", "w");
+    FILE *memoria_file = fopen("memoria.txt", "w");
+    FILE *hamiltoniano_file = fopen("hamiltoniano.txt", "w");
+    FILE *presion_mitad_file = fopen("presion_mitad.txt", "w"); //Mide la presión en el muro de enmedio.
+
+
+
+    //archivos de entropía
+    FILE *densidad_hot_file = fopen("densidad_hot.txt", "w"); //Densidad de calientes.
+    FILE *densidad_cold_file = fopen("densidad_cold.txt", "w"); //Densidad de frias.
+    FILE *entropy_sub_file = fopen("entropy_subdivisions.txt", "w"); //En este archivo irá la evolución de la entropía por subsecciones.
+    FILE *entropy_total_file = fopen("entropy_total.txt", "w"); //Y aquí la total, que será un número en cada iteración.
+    FILE *entropy_demon_file = fopen("entropy_demon.txt", "w"); //Archivo de entropía y se le suma la entropía del demonio, es decir, su calor.
+
+
+    //archivos media
+    FILE *densidad_file_media = fopen("densidad_media.txt", "w");   //Fichero donde se guarda la densidad de cada sección de la matriz grande en una matriz más pequeña. El paso se diferencia por salto de línea vacío.    
+    FILE *presion_cold_file_media = fopen("presionL_media.txt", "w");     //Fichero donde se guarda la presión de las partículas frías. El paso se diferencia por salto de línea vacío.
+    FILE *presion_hot_file_media = fopen("presionR_media.txt", "w");
+    FILE *entropy_sub_media_file = fopen("entropy_subdivisions_media.txt", "w"); //En este archivo irá la evolución de la entropía por subsecciones.
+    FILE *entropy_total_media_file = fopen("entropy_total_media.txt", "w"); //Y aquí la total, que será un número en cada iteración.
+
+    // Voy a repetir el proceso bastantes veces para hacer una media estocástica
+    FILE *AveragePresion_file = fopen("Ave_Presion.txt", "w");
+    FILE *AverageDensity_file = fopen("Ave_Density.txt", "w");
+    FILE *AverageDensityTypes_file = fopen("Ave_Density_Types.txt", "w");
+    FILE *AverageEntropy_file = fopen("Ave_Entropy.txt", "w");
+    FILE *Average_DemonEntropy_file = fopen("Ave_Demon_and_Entropy.txt", "w");
+
+    //Para los errores y las sigmas
+
+    FILE *error_presion_file = fopen("Error_Presion.txt", "w");
+    FILE *sigma_presion_file = fopen("Sigma_Presion.txt", "w");
+    FILE *error_densidad_file = fopen("Error_Densidad.txt", "w");
+    FILE *sigma_densidad_file = fopen("Sigma_Densidad.txt", "w");
+    FILE *error_densidad_tipo_file = fopen("Error_Densidad_Tipo.txt", "w");
+    FILE *sigma_densidad_tipo_file = fopen("Sigma_Densidad_Tipo.txt", "w");
+    FILE *error_entropy_file = fopen("Error_Entropia.txt", "w");
+    FILE *sigma_entropy_file = fopen("Sigma_Entropia.txt", "w");
+    FILE *error_entropy_demon_file = fopen("Error_Entropia_Demonio.txt", "w");
+    FILE *sigma_entropy_demon_file = fopen("Sigma_Entropia_Demonio.txt", "w");
+
+
+
+
+
+    //Compruebo que todos los archivos se abran.
+
+    if (AveragePresion_file == NULL || Average_DemonEntropy_file == NULL || AverageEntropy_file == NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    if (matriz_file == NULL || presion_mitad_file == NULL || demonio_file==NULL || densidad_file==NULL || densidad_hot_file==NULL || densidad_cold_file==NULL || presion_cold_file==NULL || presion_hot_file==NULL || memoria_file==NULL || hamiltoniano_file==NULL || entropy_sub_file== NULL || entropy_total_file== NULL || entropy_demon_file==NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    if ( densidad_file_media==NULL || presion_cold_file_media==NULL || presion_hot_file_media==NULL || entropy_total_media_file==NULL || entropy_sub_media_file==NULL) {
+        printf ("Error al abrir el archivo JAJAJA. \n");
+        return 1;
+    }
+
+    //Inicializo las variables estocásticas a 0.0
+    for (int i = 0; i < T_TOTAL; i++)
+    {
+
+        for(int j=0; j<2; j++)
+        {
+            presion_total[i][j] = 0.0;
+
+            presion_suma[i][j]=0.0;
+            presion_cuad[i][j]=0.0;
+            presion_media[i][j]=0.0;
+            sigma_presion[i][j]=0.0;
+            error_presion[i][j]=0.0;
+
+            densidad_suma[i][j]=0.0;
+            densidad_total_esto[i][j] = 0.0;
+            densidad_media[i][j] = 0.0;
+            densidad_cuad[i][j] = 0.0;
+            sigma_densidad[i][j] = 0.0;
+            error_densidad[i][j] = 0.0;
+        }
+
+        for(int j=0; j<4; j++)
+        {
+            densidad_tipo_suma[i][j]=0.0;
+            densidad_tipo_media[i][j] = 0.0;
+            densidad_tipo_cuad[i][j] = 0.0;
+            sigma_densidad_tipo[i][j] = 0.0;
+            error_densidad_tipo[i][j] = 0.0;
+        }
+        
+        total_entropy_esto[i] = 0.0;
+        entropy_suma[i] = 0.0;
+        entropy_media[i] = 0.0;
+        entropy_cuad[i] = 0.0;
+        sigma_entropy[i] = 0.0;
+        error_entropy[i] = 0.0;
+
+        total_entropy_demon_esto[i] = 0.0;
+        entropy_demon_suma[i]=0.0;
+        entropy_demon_media[i] = 0.0;
+        entropy_demon_cuad[i] = 0.0;
+        sigma_entropy_demon[i] = 0.0;
+        error_entropy_demon[i] = 0.0;
+        
+        
+
+
+
+
+    }
+
+
+    for (int r=0; r<repeticiones; r++)
+    {
+
+        
+
+
+
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////         INICIALIZAR         /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        //Voy a crear la matriz de todo 0. 
+        //A continuación, rellenaré las partículas frías y calientes. ¿Cómo?
+        //Escojo una posición al azar, si hay un 0, pues que ponga una partícula, sino, que lo intente otra vez.
+
+
+        //Inicializo la matriz llamando a la función
+        inicializar(matriz, pl, pr, entropy_sub_media);
+
+        memory[0][0] = 0; //Inicializo la memoria a 0
+        memory[0][1] = 0; //Inicializo la memoria a 0
+
+        for (int i=0; i<T_TOTAL; i++)
+        {
+            hamiltoniano[0][i] = 0;
+            hamiltoniano[1][i] = 0;
+        }
+
+        //Guardo esta iteración
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < M; j++) {
+                fprintf(matriz_file, "%d", matriz[i][j]);
+
+                if (j < M - 1) {
+                    fprintf(matriz_file, "\t");
+                }
+            }
+            fprintf(matriz_file, "\n");
+        }
+
+        fprintf(matriz_file, "\n");
+
+
+        //Pongo las variables del demonio y las entropías a 0.
+
+        actua_demonio_cold=0;
+        actua_demonio_hot=0;
+        entropy_demon=0.0;
+        entropy_total=0.0;
+        vecesmemoria=0;
+        entropiaFINALFINAL=0.0;
+        vemos=0;
+        pasamos=0;
+
+
+
+        //HAGO EL BUCLE GRANDE. NO PARARÁ HASTA QUE TERMINE T_TOTAL
+        int contador=0;
+
+        //Pongo las variables estocásticas a 0
+
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////          BUCLE GENERAL           //////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        while(contador<T_TOTAL)
+        {   
+            //Inicializo la matriz auxiliar a la matriz. La matriz auxiliar la usaré para poner los cambios de matriz principal. Luego la igualaré y el bucle estará completo.
+            for (int i=0; i<N; i++)
+            {
+                for (int j=0; j<M; j++)
+                {
+                    matriz_auxiliar[i][j]=matriz[i][j];
+                }
+            }
+
+            //Inicializo las presiones a 0
+            for (int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    for (int k=0; k<4; k++)
+                    {
+                        pl[i][j][k]=0;
+                        pr[i][j][k]=0;
+                    }
+                }
+            } 
+
+
+            for (int i=0; i<N; i++)
+            {
+                for (int j=0; j<M; j++)
+                {   
+
+                    valor_demonio=0;
+
+                    if(matriz[i][j]>0)
+                    {
+                        //Ahora voy a primero que elija dirección de movimiento y luego si se puede mover o no. Esto servirá para contar la presión.
+                        //Es decir, la partícula ahora puede chocar con la pared y rebotar. El rebote está caracterizado porque o bien se queda en su sitio o se va a una posición vecina.
+
+                        //Por tanto como puede moverse hago que puedemoverse=1
+
+                        puedemoverse=1;
+
+                        //Escojo una dirección aleatoria. 0 es arriba, 1 derecha, 2 abajo, 3 izquierda. SON PERIODOS EN 4, OSEA QUE 4 arriba, 5 derecha, 6 abajo, 7 izquierda.
+
+                        semueve=rand()%4; //Se escoge la dirección de movimiento al azar.
+                        contador_movimientos = 0; //Esta variable nos va a decir cuantas veces ha ciclado sin posibilidad de movimiento. Es decir, si llega a 3 significa que ha recorrido todas las posibilidades sin éxito y se tiene que quedar donde estaba.
+
+                        //De esta forma, no necesitamos un haydireccion y un semueve, solo con esto ya sí se puede calcular. 
+
+                        //Ahora escojo una probabilidad de que se mueva.
+                        prob_movimiento = (double)rand()/ (double) RAND_MAX; //Esto da una probabilidad uniforme. El double le hace casting.
+
+
+
+
+                        //Para el caso de que sea fría
+                        if (matriz[i][j]==1)
+                        {
+                            if (prob_movimiento >= umbral_cold)
+                            {
+
+                                //Ahora voy a hacer un bucle while hasta que lleguemos al límite de contador_movimientos.
+                                //Esto sirve para ciclar todas las opciones disponibles y aún así tener en cuenta el cálculo de presión.
+                                //Por tanto, comienzo con contador_movimientos = 0 y si no hay opción pues va sumando uno. Entonces hará el bucle para la siguiente opción y así.
+                                //Cuando llegue al límite se saldrá del bucle y tendremos que no se ha podido mover y que se queda en su posición.
+                                //FALTA METER EN LOS CASOS UN BREAK DE QUE SÍ HA ENCONTRADO POSICIÓN, PUEDE SER QUE CONTADOR_MOVIMIENTO=5
+
+                                while(contador_movimientos<4)
+                                {
+
+                                    //ARRIBA
+                                    if (semueve == 0 || semueve==4)
+                                    {
+                                        if(i==0) //Si se mueve arriba en la primera fila solo puede rebotar.
+                                        {
+                                            //Aquí se tiene que sumar 1 la presión a la celda que corresponda.
+                                            pl[i/divisor_fila][j/divisor_columna][0]++; 
+                                            //Como rebota, cambio la dirección y sumo uno a contador de movimientos
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                        else //Ya no estamos en la primera fila
+                                        {
+                                            if(matriz_auxiliar[i-1][j]==0) //Compruebo si está vacía la celda de arriba
+                                            {
+                                                if ((i)%divisor_fila == 0)
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i-1][j] = 1;
+                                                    actua_demonio_cold++;
+                                                    valor_demonio = 1;
+                                                    memory[0][0]++;
+                                                    hamiltoniano[0][contador] += -(1-umbral_cold)*log2(1-umbral_cold); 
+
+                                                    vemos++;
+                                                    pasamos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+
+                                                    if (memory[0][0] >= MEMORIA) // La matriz memory al final no se utiliza
+                                                    {
+
+                                                        memory[0][0] = 0;
+                                                        memory[0][1]++;
+                                                        vecesmemoria++;
+                                                    }
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i-1][j] = 1;
+                                                    break;
+                                                }
+                                            }
+                                            else //Ahora es si está llena la celda de arriba
+                                            {
+
+                                                if ((i)%divisor_fila == 0)
+                                                {
+                                                    pl[i/divisor_fila][j/divisor_columna][0]++;
+                                                }
+                                                semueve++; //Ciclo, ahora me voy a la derecha y añado uno al contador de movimiento. 
+                                                contador_movimientos++;
+
+                                            }
+                                        }                                
+                                    }
+
+
+
+                                    //DERECHA
+                                    else if (semueve == 1 || semueve == 5)
+                                    {
+                                        if(j==(M-1)) //De nuevo compruebo que no esté en la última columna, ya que aquí solo puede rebotar
+                                        {
+                                            pl[i/divisor_fila][j/divisor_columna][1]++;
+                                            semueve++;
+                                            contador_movimientos++;
+                                        }
+                                        else //Ya no estamos en la última columna
+                                        {
+                                            if(matriz_auxiliar[i][j+1]==0) //Compruebo que esté vacía:
+                                            {
+                                                if ((j+1)%divisor_columna == 0)
+                                                {
+                                                    //Ahora debería ciclar de nuevo ya que no puede atravesar ese muro.
+                                                    semueve++;
+                                                    contador_movimientos++;
+                                                    pl[i/divisor_fila][j/divisor_columna][1]++;
+
+                                                    vemos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+
+
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j+1] = 1;
+                                                    break;
+                                                }
+                                            } 
+                                            else //Ahora está ocupada
+                                            {
+
+                                                if ((j+1)%divisor_columna == 0)
+                                                {
+                                                    pl[i/divisor_fila][j/divisor_columna][1]++;
+                                                }
+                                                //De nuevo, ciclamos
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }    
+                                        }
+                                    }
+
+
+
+
+                                    //ABAJO
+                                    else if (semueve == 2 || semueve==6)
+                                    {
+                                        if(i==(N-1)) //Compruebo que no esté en la última fila
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                            pl[i/divisor_fila][j/divisor_columna][2]++;
+                                        }
+                                        else
+                                        {
+                                            if(matriz_auxiliar[i+1][j]==0) //Compruebo que esté vacía
+                                            {
+                                                if ((i+1)%divisor_fila == 0)
+                                                {
+                                                    //Volvemos a ciclar
+                                                    semueve++;
+                                                    contador_movimientos++;
+                                                    pl[i/divisor_fila][j/divisor_columna][2]++;
+                                                    vemos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i+1][j] = 1;
+                                                    break;
+                                                }
+                                            }
+                                            else //Ahora está ocupada
+                                            {
+
+                                                if ((i+1)%divisor_fila == 0)
+                                                {
+                                                    pl[i/divisor_fila][j/divisor_columna][2]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            } 
+                                        }                                    
+                                    }
+
+
+
+
+                                    //IZQUIERDA
+                                    else if (semueve == 3 || semueve==7)
+                                    {
+                                        if(j==0) //Compruebo que no esté en la primera columna.
+                                        {
+                                        semueve++;
+                                        contador_movimientos++;
+                                        pl[i/divisor_fila][j/divisor_columna][3]++; 
+                                        }
+                                        else    //Ya no estamos en la primera columna
+                                        {
+                                            if(matriz_auxiliar[i][j-1]==0) //Compruebo que esté vacía
+                                            {
+                                                if ((j)%divisor_columna == 0)
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j-1] = 1;
+                                                    actua_demonio_cold++;
+                                                    valor_demonio = 1;
+                                                    memory[0][0]++;
+                                                    hamiltoniano[0][contador] += -(1-umbral_cold)*log2(1-umbral_cold);
+
+                                                    vemos++;
+                                                    pasamos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+                                                    if (memory[0][0] >= MEMORIA)
+                                                    {
+
+                                                        memory[0][0] = 0;
+                                                        memory[0][1]++;
+                                                        vecesmemoria++;
+                                                    }
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j-1] = 1;
+                                                    break;
+                                                }   
+                                            }
+                                            else
+                                            {
+
+                                                if ((j)%divisor_columna == 0)
+                                                {
+                                                    pl[i/divisor_fila][j/divisor_columna][3]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                        }
+
+                                    }
+                                }
+
+
+
+                                if(contador_movimientos==4) //Ha ciclado por completo y no ha enocntrado posibilidad de mvto.
+                                {
+                                    matriz_auxiliar[i][j]=1; //No se ha podido mover, se queda en su sitio
+                                }
+
+
+                                //Termina el if de probabilidad < prob_umbral fría
+                            }
+                        
+                            //Termina el if de fría
+                        }
+
+
+
+
+
+                        //Para el caso de que sea caliente
+                        else
+                        {
+                            if (prob_movimiento >= umbral_hot)
+                            {
+                                while(contador_movimientos<4)
+                                {
+
+
+                                    //ARRIBA
+                                    if(semueve==0 ||semueve==4)
+                                    {
+                                        if(i==0) //Estamos en la primera fila y quiere ir para arriba, nanai.
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                            pr[i/divisor_fila][j/divisor_columna][0]++;
+                                        }
+                                        else //Ya no primera fila
+                                        {
+                                            if(matriz_auxiliar[i-1][j]==0) //Compruebo si está vacía
+                                            {
+                                                if ((i)%divisor_fila == 0)
+                                                {
+                                                    //Como no puede quedarse donde estaba, rebota.
+                                                    semueve++;
+                                                    contador_movimientos++;
+                                                    pr[i/divisor_fila][j/divisor_columna][0]++;
+
+                                                    vemos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i-1][j] = 2;
+                                                    break;
+                                                }
+                                            }
+                                            else
+                                            {
+
+                                                if ((i)%divisor_fila == 0)
+                                                {
+                                                    pr[i/divisor_fila][j/divisor_columna][0]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                        }
+                                    }
+
+
+
+
+                                    //DERECHA
+                                    else if(semueve==1 || semueve==5)
+                                    {
+                                        if(j==(M-1))
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                            pr[i/divisor_fila][j/divisor_columna][1]++;
+                                        }
+                                        else
+                                        {
+                                            if(matriz_auxiliar[i][j+1]==0)
+                                            {
+                                                if ((j+1)%divisor_columna == 0)
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j+1] = 2;
+                                                    actua_demonio_hot++;
+                                                    valor_demonio = 2;
+                                                    hamiltoniano[1][contador] += -(1-umbral_hot)*log2(1-umbral_hot);
+                                                    memory[0][0]++;
+
+                                                    vemos++;
+                                                    pasamos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+
+                                                    if (memory[0][0] >= MEMORIA)
+                                                    {
+
+                                                        memory[0][0] = 0;
+                                                        memory[0][1]++;
+                                                        vecesmemoria++;
+                                                    }
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j+1] = 2;
+                                                    break;
+                                                }
+                                            }
+                                            else
+                                            {
+
+                                                if ((j+1)%divisor_columna == 0)
+                                                {
+                                                    pr[i/divisor_fila][j/divisor_columna][1]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }                                        
+                                        }                                    
+                                    }
+
+
+
+
+                                    //ABAJO
+                                    else if(semueve==2 || semueve==6)
+                                    {
+                                        if(i==(N-1))
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                            pr[i/divisor_fila][j/divisor_columna][2]++;
+                                        }
+                                        else
+                                        {
+                                            if(matriz_auxiliar[i+1][j]==0)
+                                            {
+                                                if (((i+1)%divisor_fila == 0) && (i+1) != N)
+                                                {
+                                                    matriz_auxiliar[i][j]=0;
+                                                    matriz_auxiliar[i+1][j]=2;
+                                                    actua_demonio_hot++;
+                                                    valor_demonio = 2;
+                                                    memory[0][0]++;
+                                                    hamiltoniano[1][contador] += -(1-umbral_hot)*log2(1-umbral_hot);
+
+
+                                                    vemos++;
+                                                    pasamos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+
+                                                    if (memory[0][0] >= MEMORIA)
+                                                    {
+
+                                                        memory[0][0] = 0;
+                                                        memory[0][1]++;
+                                                        vecesmemoria++;
+                                                    }
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j]=0;
+                                                    matriz_auxiliar[i+1][j]=2;
+                                                    break;
+                                                }
+                                            }
+                                            else
+                                            {
+
+                                                if ((i+1)%divisor_fila == 0)
+                                                {
+                                                    pr[i/divisor_fila][j/divisor_columna][2]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                        }                                    
+                                    }
+
+
+
+
+                                    //IZQUIERDA
+                                    else if(semueve==3 || semueve==7)
+                                    {
+                                        if(j==0)
+                                        {
+                                            semueve++;
+                                            contador_movimientos++;
+                                            pr[i/divisor_fila][j/divisor_columna][3]++;
+                                        }
+                                        else
+                                        {
+                                            if(matriz_auxiliar[i][j-1]==0)
+                                            {
+                                                if ((j)%divisor_columna == 0) 
+                                                {
+                                                    semueve++;
+                                                    contador_movimientos++;
+                                                    pr[i/divisor_fila][j/divisor_columna][3]++;
+
+                                                    vemos++;
+                                                    Popen = (double)pasamos*1.0/vemos*1.0;
+                                                    Pclose = 1 - Popen;
+
+                                                    if (Popen > 0 && Pclose > 0)
+                                                    {
+                                                        H += (-Popen*log2(Popen) - Pclose*log2(Pclose));
+                                                    }
+
+                                                    if (H >= MEMORIA)
+                                                    {
+                                                        H_total[vecesborramos][0] = H;
+                                                        H_total[vecesborramos][1] = contador;
+                                                        vecesborramos++;
+                                                        entropiaFINALFINAL += H * log(2);
+
+                                                        H = 0.0;
+                                                        vemos = 0;
+                                                        pasamos = 0;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    matriz_auxiliar[i][j] = 0;
+                                                    matriz_auxiliar[i][j-1] = 2;
+                                                    break;
+                                                }
+                                            }
+                                            else
+                                            {
+
+                                                if ((j)%divisor_columna == 0)
+                                                {
+                                                    pr[i/divisor_fila][j/divisor_columna][3]++;
+                                                }
+                                                semueve++;
+                                                contador_movimientos++;
+                                            }
+                                        }                                    
+                                    }
+
+                                }
+
+
+                                //De nuevo, si cicla y no encuentra pues que se quede donde está.
+                                if(contador_movimientos==4) //Ha ciclado por completo y no ha enocntrado posibilidad de mvto.
+                                {
+                                    matriz_auxiliar[i][j]=2; //No se ha podido mover, se queda en su sitio
+                                }
+
+
+                            }
+
+
+
+
+
+                            //Termina if de caliente
+                        }
+
+                        //Termina el elemento de matriz no nulo.
+                    }
+
+                    fprintf(demonio_file, "%d", valor_demonio); //Si no hay partícula, el demonio no actúa..
+                    fprintf(demonio_file, "\n");
+                    //Termina la columna
+                }
+                //Termina la fila
+            }
+
+
+            //Cada vez que hagamos una matriz entera, pongo un salto de línea al demonio.
+            fprintf(demonio_file, "\n");
+
+        
+
+            //Pongo de nuevo los valores de matrizauxiliar en la matriz normal y los guardo en el fichero.
+
+            for(int i=0; i<N; i++)
+            {
+                for(int j=0; j<M; j++)
+                {
+                    matriz[i][j]=matriz_auxiliar[i][j];
+                    fprintf(matriz_file, "%d", matriz[i][j]);
+
+                    if (j < M - 1) {
+                        fprintf(matriz_file, "\t");
+                    }
+                }
+                fprintf(matriz_file, "\n");
+            }
+            fprintf(matriz_file, "\n");
+
+
+            //Guardo ahora las presiones y las voy sumando a la media.
+
+            for (int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    fprintf(presion_cold_file, "%d", pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3]);
+                    fprintf(presion_hot_file, "%d", pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3]);
+                    pl_media[i][j] += (pl[i][j][0]+pl[i][j][1]+pl[i][j][2]+pl[i][j][3])*1.0;
+                    pr_media[i][j] += (pr[i][j][0]+pr[i][j][1]+pr[i][j][2]+pr[i][j][3])*1.0;
+                    if(j<div_M-1)
+                    {
+                        fprintf(presion_cold_file, "\t");
+                        fprintf(presion_hot_file, "\t");
+                    }
+                }
+                fprintf(presion_cold_file, "\n");
+                fprintf(presion_hot_file, "\n");
+            }
+            fprintf(presion_cold_file, "\n");
+            fprintf(presion_hot_file, "\n");
+
+
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+            /////////////////           DENSIDAD            ///////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+            //Ahora vamos a calcular la densidad de cada bloque.
+            //Para modelar la densidad de cada división trabajaremos con las celdas de cada submatriz. No trabajaremos con submatrices, sino con la grande.
+            //Vamos a crear el parámetro "bloquefila" y "bloquecolumna", para que nos diga exactamente en qué región está.
+            //Barreremos todas las submatrices e iremos anotando la cantidad de partículas que hay y si son calientes o frías. 
+            //No tendremos en cuenta si la partícula caliente aporta mayor o menor densidad al ser una propiedad microscópica y no tener potencial de repulsión ni energía cinética.
+            //La temperatura de las partículas se tendrá en cuenta para la temperatura (obvio) y para la presión, un rebote de una caliente trae más presión que un rebote de una fría.
+
+
+            //Inicializo los arrays de densidad a 0
+
+            for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    densidad_cold[i][j]=0;
+                    densidad_hot[i][j]=0;
+                    densidad_total[i][j]=0;
+                }
+            }
+
+
+            //Barro cada posición de matriz y anoto si está o no para su densidad.
+
+            for(int i=0; i<N; i++)
+            {
+                for(int j=0; j<M; j++)
+                {
+                    //Miro que haya partícula
+                    if(matriz[i][j]!=0)
+                    {   
+                        //Hago la división entera para que me dé la sección correcta
+                        bloquefila=i/divisor_fila;
+                        bloquecolumna=j/divisor_columna;
+
+                        //Identifico si es fría
+                        if(matriz[i][j]==1)
+                        {
+                            densidad_cold[bloquefila][bloquecolumna]++;
+                            densidad_total[bloquefila][bloquecolumna]++;
+                            
+                        //Termina el if de fría
+                        }
+                        //Identifico si es caliente
+                        else
+                        {
+                            densidad_hot[bloquefila][bloquecolumna]++;
+                            densidad_total[bloquefila][bloquecolumna]++;
+                        //Termina el if de caliente
+                        }
+
+                    //Termina el if de elemento matriz no nulo
+                    }
+
+                //Termino de barrir la columna
+                }
+            
+            //Termino de barrir la fila
+            }
+
+
+
+            //Guardo esta matriz en el archivo. Tanto la total como las frías y calientes.
+
+             for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    fprintf(densidad_file, "%d", densidad_total[i][j]);
+                    fprintf(densidad_hot_file, "%d", densidad_hot[i][j]);
+                    fprintf(densidad_cold_file, "%d", densidad_cold[i][j]);
+                    densidad_total_media[i][j] += densidad_total[i][j];
+                    if(j<div_M-1)
+                    {
+                        fprintf(densidad_file, "\t");
+                        fprintf(densidad_hot_file, "\t");
+                        fprintf(densidad_cold_file, "\t");
+                    }
+                }
+                fprintf(densidad_file, "\n");
+                fprintf(densidad_hot_file, "\n");
+                fprintf(densidad_cold_file, "\n");
+            }
+            fprintf(densidad_file, "\n");
+            fprintf(densidad_hot_file, "\n");
+            fprintf(densidad_cold_file, "\n");
+
+            //Cada 5 pasos se deben guardar las medias de: presión y densidad.
+
+            if ((contador+1) % MEDIA == 0){
+
+                for(int i=0; i<div_N; i++)
+                {
+                    for(int j=0; j<div_M; j++)
+                    {
+                        fprintf(densidad_file_media, "%lf", densidad_total_media[i][j]/(MEDIA*1.0));
+                        fprintf(presion_cold_file_media, "%lf", pl_media[i][j]/(MEDIA*1.0));
+                        fprintf(presion_hot_file_media, "%lf", pr_media[i][j]/(MEDIA*1.0));
+                        if(j<div_M-1)
+                        {
+                            fprintf(densidad_file_media, "\t");
+                            fprintf(presion_cold_file_media, "\t");
+                            fprintf(presion_hot_file_media, "\t");
+                        }
+                        densidad_total_media[i][j]=0.0;
+                        pl_media[i][j]=0.0;
+                        pr_media[i][j]=0.0;
+                    }
+                    fprintf(densidad_file_media, "\n");
+                    fprintf(presion_cold_file_media, "\n");
+                    fprintf(presion_hot_file_media, "\n");
+                }
+                fprintf(densidad_file_media, "\n");
+                fprintf(presion_cold_file_media, "\n");
+                fprintf(presion_hot_file_media, "\n");
+
+            }
+
+
+            fprintf(hamiltoniano_file, "%lf %lf \n", hamiltoniano[0][contador], hamiltoniano[1][contador]);
+
+            // Calculo la presión que hay en el medio de todo.
+            presion_mitad[0] = pl[0][0][1] + pr[0][0][1];
+            presion_mitad[1] = pl[0][1][3] + pr[0][1][3];
+
+            presiones_repeL[contador][r] = presion_mitad[0];
+            presiones_repeR[contador][r] = presion_mitad[1];
+
+            fprintf(presion_mitad_file, "%d %d \n", presion_mitad[0], presion_mitad[1]);
+
+
+            //Pongo las presiones estocásticas:
+
+            presion_suma[contador][0] +=presion_mitad[0];
+            presion_suma[contador][1] +=presion_mitad[1];
+
+            presion_cuad[contador][0] += presion_mitad[0]*presion_mitad[0];
+            presion_cuad[contador][1] += presion_mitad[1]*presion_mitad[1];
+
+
+            //Pongo las densidades bien para que se guarden estocásticamente
+
+            densidad_L_esto[contador][r][0] = densidad_cold[0][0];
+            densidad_L_esto[contador][r][1] = densidad_hot[0][0];
+            densidad_R_esto[contador][r][0] = densidad_cold[0][1];
+            densidad_R_esto[contador][r][1] = densidad_hot[0][1];
+
+            densidad_suma[contador][0] += densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1];
+            densidad_suma[contador][1] += densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1];
+            densidad_cuad[contador][0] += (densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1])*(densidad_L_esto[contador][r][0] + densidad_L_esto[contador][r][1]);
+            densidad_cuad[contador][1] += (densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1])*(densidad_R_esto[contador][r][0] + densidad_R_esto[contador][r][1]);
+
+            densidad_tipo_suma[contador][0] += densidad_L_esto[contador][r][0];
+            densidad_tipo_suma[contador][1] += densidad_L_esto[contador][r][1];
+            densidad_tipo_suma[contador][2] += densidad_R_esto[contador][r][0];
+            densidad_tipo_suma[contador][3] += densidad_R_esto[contador][r][1];
+
+            densidad_tipo_cuad[contador][0] += densidad_L_esto[contador][r][0]*densidad_L_esto[contador][r][0];
+            densidad_tipo_cuad[contador][1] += densidad_L_esto[contador][r][1]*densidad_L_esto[contador][r][1];
+            densidad_tipo_cuad[contador][2] += densidad_R_esto[contador][r][0]*densidad_R_esto[contador][r][0];
+            densidad_tipo_cuad[contador][3] += densidad_R_esto[contador][r][1]*densidad_R_esto[contador][r][1];
+
+
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////         ENTROPÍA            ///////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+            // PLANTEMIENTO /////////////////////////////
+            //
+            //En cada iteración (incluyendo la inicial) se calculará la entropía, contando el número de partículas que hay de cada tipo (fria, caliente, hueco).
+            //Esto es lo que hace ya la DENSIDAD, así que no hace falta calcularlo. 
+            //La entropía sigue la fórmula S= k_B * ln(Omega), con Omega= N_total! / (N_frio! * N_caliente! * N_vacio!)
+            //Se hace para cada subsección, se calcula la entropía de esa subsección, se almacena en una matriz y luego se suman todas para la total
+            //Se asigna entropía 0 cuando todos las celdas están ocupadas por la misma partícula
+            //Estaría bien anotar cuando el demonio actúa para poder ver cambios.
+            //
+            ///////////////////////////////////////////////////
+
+            //Para calcular omega usaré la función tgamma(double x).
+
+            omega=0.0;          //Por si acaso
+            entropy_total=0.0;   //La inicializo a 0 por si acaso.
+
+            for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    num_holes=num_sub-densidad_cold[i][j]-densidad_hot[i][j];
+                    //Lo paso todo a float multiplicando por 1.0
+                    omega = tgamma(num_sub*1.0+1.0)/(tgamma(densidad_cold[i][j]*1.0+1.0)*tgamma(densidad_hot[i][j]*1.0+1.0)*tgamma(num_holes*1.0+1.0));
+                    entropy_sub[i][j]=log(omega); //FALTARÍA MULTIPLICARLO POR KB, PERO ¿QUÉ UNIDADES TIENE?
+                    entropy_sub_media[i][j]+=entropy_sub[i][j];
+                    entropy_total+=entropy_sub[i][j];
+                }
+            }
+            entropy_total_media+=entropy_total;
+        
+            //Con la entropía calculada la printeo
+
+            for(int i=0; i<div_N; i++)
+            {
+                for(int j=0; j<div_M; j++)
+                {
+                    fprintf(entropy_sub_file, "%lf", entropy_sub[i][j]);
+                    if(j<div_M-1)
+                    {
+                        fprintf(entropy_sub_file, "\t");
+                    }
+
+                }
+                fprintf(entropy_sub_file, "\n");
+            }
+            fprintf(entropy_sub_file, "\n");
+
+
+            //Printeo también la total
+            fprintf(entropy_total_file, "%lf", entropy_total);
+            fprintf(entropy_total_file, "\n");
+
+
+
+            //Guardo las entropías medias
+
+            if ((contador+1) % MEDIA == 0){
+
+                for(int i=0; i<div_N; i++)
+                {
+                    for(int j=0; j<div_M; j++)
+                    {
+
+                        fprintf(entropy_sub_media_file, "%lf", entropy_sub_media[i][j]/(MEDIA*1.0));
+                        if(j<div_M-1)
+                        {
+                            fprintf(entropy_sub_media_file, "\t");
+                        }
+                        entropy_sub_media[i][j]=0.0;
+                    }
+                    fprintf(entropy_sub_media_file, "\n");
+                }
+                fprintf(entropy_sub_media_file, "\n");
+                fprintf(entropy_total_media_file, "%lf", entropy_total_media/(MEDIA*1.0));
+                fprintf(entropy_total_media_file, "\n");
+                entropy_total_media=0.0;
+
+            }
+
+
+
+
+            //Ahora con el demonio, igualo la entropía total a esta.
+            //Para saber cuántas veces ha actuado el demonio y se ha llenado la memoria, uso la variable auxiliar VECESMEMORIA
+            //Si por ejemplo en un paso total el demonio ha actuado 42 veces y tiene de memoria 20, pues VECESMEMORIA será 2
+            //Esto indicará que ha actuado 2 veces en este paso temporal.
+
+            entropy_demon = entropy_total + vecesmemoria*MEMORIA*A;
+            new_total_entropy = entropy_total + entropiaFINALFINAL;
+            fprintf(entropy_demon_file, "%lf", new_total_entropy);
+            fprintf(entropy_demon_file, "\n");
+
+
+
+
+            
+
+
+            //Como no he puesto la entropia todo el rato como funcion de [t_total], lo pongo como auxiliar ahora
+            entropy_esto[contador] = entropy_total;
+            entropy_demon_esto[contador] = new_total_entropy;
+
+            entropy_suma[contador] += entropy_total;
+            entropy_cuad[contador] += entropy_total*entropy_total;
+
+            entropy_demon_suma[contador] += new_total_entropy;
+            entropy_demon_cuad[contador] += new_total_entropy*new_total_entropy;
+
+
+
+
+
+
+
+
+
+            contador++;
+            //Termina el bucle total de movimiento.
+        }
+
+
+
+        for (int i=0; i<vecesborramos; i++)
+        {
+            fprintf(memoria_file, "%lf %lf\n", H_total[i][0], H_total[i][1]);
+        }
+
+
+        //Cuando se termina el programa que también le sume la entropía que le queda.
+        //Tendrá 1 dimensión mayor (será de TTOTAL+1) pero da igual
+
+        entropy_demon = entropy_total + memory[0][0]*A + vecesmemoria*MEMORIA*A;
+        new_total_entropy = entropy_total + entropiaFINALFINAL;
+        fprintf(entropy_demon_file, "%lf", new_total_entropy);
+        fprintf(entropy_demon_file, "\n");
+
+
+
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////      VARIABLES ESTOCÁSTICAS          ///////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+        //Voy a crear los arrays totales y a sumarles cada valor/repeticiones, para hacer la media poco a poco.
+    
+
+        for (int i=0; i<T_TOTAL; i++)
+        {   
+
+            presion_total[i][0] += presiones_repeL[i][r]/(repeticiones*1.0);
+            presion_total[i][1] += presiones_repeR[i][r]/(repeticiones*1.0);
+
+            densidad_total_esto[i][0] += (densidad_L_esto[i][r][0] + densidad_L_esto[i][r][1])/(repeticiones*1.0);
+            densidad_total_esto[i][1] += (densidad_R_esto[i][r][0] + densidad_R_esto[i][r][1])/(repeticiones*1.0);
+
+            total_entropy_esto[i] += entropy_esto [i]/(repeticiones*1.0);
+            total_entropy_demon_esto[i] += entropy_demon_esto[i]/(repeticiones*1.0);
+        }
+
+        printf("He completado la simulación: ");
+        printf("%d", r);
+        printf("\n");
+        fflush(stdout);
+
+
+    }
+
+
+    //Guardo finalmente las variables estocásticas en sus archivos
+    //PENDIENTE DE BORRADO
+    /*
+    for (int i=0; i<T_TOTAL; i++)
+    {
+        fprintf(AveragePresion_file, "%lf %lf \n", presion_total[i][0], presion_total[i][1]);
+        fprintf(AverageDensity_file, "%lf %lf \n", densidad_total_esto[i][0], densidad_total_esto[i][1]);
+        fprintf(AverageEntropy_file, "%lf \n", total_entropy_esto[i]);
+        fprintf(Average_DemonEntropy_file, "%lf \n", total_entropy_demon_esto[i]);
+    }
+    */
+    //Guardo ahora las variables de los errores y hago los cálculos:
+
+    for(int i=0; i < T_TOTAL; i++)
+    {
+        for(int j=0; j<2; j++)
+        {
+            presion_media[i][j] = presion_suma[i][j] / (repeticiones *1.0);
+            densidad_media[i][j] = densidad_suma[i][j] /(repeticiones*1.0);
+
+            //Ahora si hay más de una simulación tendré que hacer la varianza y demás.
+            if (repeticiones>1)
+            {
+
+                varianza_p = (presion_cuad[i][j]-repeticiones*presion_media[i][j]*presion_media[i][j])/(repeticiones*1.0-1.0); //Recuerdo que se divide por N-1
+                varianza_d = (densidad_cuad[i][j] - repeticiones*densidad_media[i][j]*densidad_media[i][j])/(repeticiones*1.0-1.0);
+            
+                //Por si acaso
+                if(varianza_p<0.0) { varianza_p=0.0;}
+                if(varianza_d < 0.0) {varianza_d=0.0;}
+
+                sigma_presion[i][j] = sqrt(varianza_p);
+                error_presion[i][j] = sigma_presion[i][j]/(sqrt(repeticiones*1.0));
+
+                sigma_densidad[i][j] = sqrt(varianza_d);
+                error_densidad[i][j] = sigma_densidad[i][j]/(sqrt(repeticiones*1.0));
+            }
+            else
+            {
+                sigma_presion[i][j]=0.0;
+                error_presion[i][j]=0.0;
+                sigma_densidad[i][j]=0.0;
+                error_densidad[i][j]=0.0;
+            }
+
+        }
+
+        for(int j=0; j<4; j++)
+        {
+
+            densidad_tipo_media[i][j] = densidad_tipo_suma[i][j]/(repeticiones*1.0);
+            if(repeticiones >1)
+            {
+                varianza_dt=(densidad_tipo_cuad[i][j]-repeticiones*densidad_tipo_media[i][j]*densidad_tipo_media[i][j])/(repeticiones*1.0-1.0);
+            
+                if(varianza_dt <0.0) {varianza_dt=0.0;}
+                sigma_densidad_tipo[i][j] = sqrt(varianza_dt);
+                error_densidad_tipo[i][j] = sigma_densidad_tipo[i][j]/sqrt(repeticiones*1.0);            
+            }
+            else
+            {
+                sigma_densidad_tipo[i][j]=0.0;
+                error_densidad_tipo[i][j]=0.0;
+            }
+        }
+
+
+
+
+
+        //Ahora la entropía
+        entropy_media[i] = entropy_suma[i]/(repeticiones*1.0);
+        entropy_demon_media[i] = entropy_demon_suma[i]/(repeticiones*1.0);
+
+        if (repeticiones >1)
+        {
+            varianza_e = (entropy_cuad[i] - repeticiones*entropy_media[i]*entropy_media[i])/(repeticiones*1.0-1.0);
+            varianza_ed = (entropy_demon_cuad[i] - repeticiones*entropy_demon_media[i]*entropy_demon_media[i])/(repeticiones*1.0-1.0);
+
+            if(varianza_e <0.0) { varianza_e =0.0;}
+            if(varianza_ed < 0.0) { varianza_ed =0.0;}
+
+            sigma_entropy[i] = sqrt(varianza_e);
+            error_entropy[i] = sigma_entropy[i] / sqrt(repeticiones*1.0);
+
+            sigma_entropy_demon[i] = sqrt(varianza_ed);
+            error_entropy_demon[i] = sigma_entropy_demon[i] / sqrt(repeticiones*1.0);
+        }
+        else
+        {
+            sigma_entropy[i] = 0.0;
+            error_entropy[i] = 0.0;
+            sigma_entropy_demon[i] = 0.0;
+            error_entropy_demon[i] = 0.0;
+        }
+        
+        
+    }
+
+    //Guardo finalmente todas las variables estocásticas y los errores.
+
+    for(int i=0; i<T_TOTAL; i++)
+    {
+        //Presion
+        fprintf(AveragePresion_file, "%lf %lf \n", presion_media[i][0], presion_media[i][1]);
+        fprintf(sigma_presion_file, "%lf %lf \n", sigma_presion[i][0], sigma_presion[i][1]);
+        fprintf(error_presion_file, "%lf %lf \n", error_presion[i][0], error_presion[i][1]);
+
+        //Densidad
+        fprintf(AverageDensity_file, "%lf %lf \n", densidad_media[i][0], densidad_media[i][1]);
+        fprintf(sigma_densidad_file, "%lf %lf \n", sigma_densidad[i][0], sigma_densidad[i][1]);
+        fprintf(error_densidad_file, "%lf %lf \n", error_densidad[i][0], error_densidad[i][1]);
+
+        //Densidad por tipos
+        fprintf(AverageDensityTypes_file, "%lf %lf %lf %lf \n", densidad_tipo_media[i][0], densidad_tipo_media[i][1], densidad_tipo_media[i][2], densidad_tipo_media[i][3]);
+        fprintf(sigma_densidad_tipo_file, "%lf %lf %lf %lf \n", sigma_densidad_tipo[i][0], sigma_densidad_tipo[i][1], sigma_densidad_tipo[i][2], sigma_densidad_tipo[i][3]);
+        fprintf(error_densidad_tipo_file, "%lf %lf %lf %lf \n", error_densidad_tipo[i][0], error_densidad_tipo[i][1], error_densidad_tipo[i][2], error_densidad_tipo[i][3]);
+
+
+        //Entropía normal
+        fprintf(AverageEntropy_file, "%lf \n", entropy_media[i]);
+        fprintf(error_entropy_file, "%lf \n", error_entropy[i]);
+        fprintf(sigma_entropy_file, "%lf \n", sigma_entropy[i]);
+
+        //Entropía del demonio
+        fprintf(Average_DemonEntropy_file, "%lf \n", entropy_demon_media[i]);
+        fprintf(error_entropy_demon_file, "%lf \n", error_entropy_demon[i]);
+        fprintf(sigma_entropy_demon_file, "%lf \n", sigma_entropy_demon[i]);
+
+
+
+    }
+
+
+
+
+
+    fclose(matriz_file);
+    fclose(demonio_file);
+    fclose(densidad_file);
+    fclose(presion_cold_file);
+    fclose(presion_hot_file);
+    fclose(memoria_file);
+    fclose(hamiltoniano_file);
+    fclose(presion_mitad_file);
+
+    fclose(densidad_hot_file);
+    fclose(densidad_cold_file);
+    fclose(entropy_sub_file);
+    fclose(entropy_total_file);
+    fclose(entropy_demon_file);
+
+    fclose(densidad_file_media);
+    fclose(presion_cold_file_media);
+    fclose(presion_hot_file_media);
+    fclose(entropy_total_media_file);
+    fclose(entropy_sub_media_file);
+
+    fclose(AveragePresion_file);
+    fclose(AverageDensity_file);
+    fclose(AverageDensityTypes_file);
+    fclose(AverageEntropy_file);
+    fclose(Average_DemonEntropy_file);
+
+    fclose(error_presion_file);
+    fclose(sigma_presion_file);
+    fclose(error_densidad_file);
+    fclose(sigma_densidad_file);
+    fclose(error_densidad_tipo_file);
+    fclose(sigma_densidad_tipo_file);
+    fclose(error_entropy_file);
+    fclose(sigma_entropy_file);
+    fclose(error_entropy_demon_file);
+    fclose(sigma_entropy_demon_file);
+
+
+    printf("Lo he hecho todo bien :)");
+    
+
+    return 0;    
+}
+
+
